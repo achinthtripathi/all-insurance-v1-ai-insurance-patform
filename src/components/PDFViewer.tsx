@@ -11,9 +11,12 @@ interface PDFViewerProps {
 const PDFViewer = ({ fileUrl }: PDFViewerProps) => {
   const defaultLayoutPluginInstance = defaultLayoutPlugin();
 
+  // Use cdnjs.cloudflare.com which is more reliable than unpkg
+  const workerUrl = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+
   return (
     <div className="h-[600px] w-full">
-      <Worker workerUrl={`https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`}>
+      <Worker workerUrl={workerUrl}>
         <Viewer fileUrl={fileUrl} plugins={[defaultLayoutPluginInstance]} />
       </Worker>
     </div>
