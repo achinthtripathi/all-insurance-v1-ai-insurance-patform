@@ -3,10 +3,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Upload, FileText, Loader2, Eye, Calendar } from "lucide-react";
+import { Upload, FileText, Loader2, Eye, Calendar, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import PDFViewer from "@/components/PDFViewer";
 
 interface UploadedDocument {
   id: string;
@@ -47,6 +48,7 @@ const Dashboard = () => {
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadedDocuments, setUploadedDocuments] = useState<UploadedDocument[]>([]);
+  const [imageZoom, setImageZoom] = useState(100);
   const [extractedData, setExtractedData] = useState<ExtractedData>({
     namedInsured: "",
     certificateHolder: "",
@@ -275,27 +277,49 @@ const Dashboard = () => {
                   
                   <div className="border rounded-lg overflow-hidden bg-muted">
                     {selectedFile?.type === "application/pdf" ? (
-                      <div className="flex flex-col items-center justify-center gap-3 p-6">
-                        <p className="text-sm text-muted-foreground text-center">
-                          PDF preview is not available inside this panel, but you can open the
-                          certificate in a full browser tab.
-                        </p>
-                        <Button asChild variant="outline" size="sm">
-                          <a href={filePreviewUrl || "#"} target="_blank" rel="noreferrer">
-                            <FileText className="mr-2 h-4 w-4" />
-                            Open PDF Preview
-                          </a>
-                        </Button>
-                      </div>
+                      filePreviewUrl && <PDFViewer fileUrl={filePreviewUrl} />
                     ) : (
-                      <img
-                        src={filePreviewUrl || ""}
-                        alt="Certificate preview"
-                        className="w-full h-auto max-h-[500px] object-contain bg-background"
-                        onError={(e) => {
-                          e.currentTarget.alt = "Certificate preview unavailable";
-                        }}
-                      />
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-end gap-2 p-2 bg-background/50">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setImageZoom(Math.max(50, imageZoom - 25))}
+                            disabled={imageZoom <= 50}
+                          >
+                            <ZoomOut className="h-4 w-4" />
+                          </Button>
+                          <span className="text-xs text-muted-foreground min-w-[3rem] text-center">
+                            {imageZoom}%
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setImageZoom(Math.min(200, imageZoom + 25))}
+                            disabled={imageZoom >= 200}
+                          >
+                            <ZoomIn className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setImageZoom(100)}
+                          >
+                            <Maximize2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <div className="overflow-auto max-h-[500px]">
+                          <img
+                            src={filePreviewUrl || ""}
+                            alt="Certificate preview"
+                            style={{ width: `${imageZoom}%` }}
+                            className="mx-auto"
+                            onError={(e) => {
+                              e.currentTarget.alt = "Certificate preview unavailable";
+                            }}
+                          />
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>
