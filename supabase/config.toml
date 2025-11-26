@@ -1,0 +1,4 @@
+project_id = "srhketymszdqtwoqrrnx"
+
+[functions.parse-certificate]
+verify_jwt = true
