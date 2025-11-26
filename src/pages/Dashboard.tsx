@@ -49,6 +49,7 @@ const Dashboard = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadedDocuments, setUploadedDocuments] = useState<UploadedDocument[]>([]);
   const [imageZoom, setImageZoom] = useState(100);
+  const [processedFileType, setProcessedFileType] = useState<string | null>(null);
   const [extractedData, setExtractedData] = useState<ExtractedData>({
     namedInsured: "",
     certificateHolder: "",
@@ -142,7 +143,8 @@ const Dashboard = () => {
         description: "Document uploaded successfully",
       });
 
-      setSelectedFile(null);
+      // Store file type for preview after processing
+      setProcessedFileType(selectedFile.type);
       
       // Start processing simulation
       setIsProcessing(true);
@@ -218,6 +220,50 @@ const Dashboard = () => {
     }
   };
 
+  const handleUploadNew = () => {
+    setSelectedFile(null);
+    setFilePreviewUrl(null);
+    setProcessedFileType(null);
+    setImageZoom(100);
+    // Reset extracted data to empty state
+    setExtractedData({
+      namedInsured: "",
+      certificateHolder: "",
+      additionalInsured: "",
+      cancellationNotice: "",
+      formType: "",
+      coverages: {
+        generalLiability: {
+          insuranceCompany: "",
+          policyNumber: "",
+          coverageLimit: "",
+          currency: "USD",
+          deductible: "",
+          effectiveDate: "",
+          expiryDate: "",
+        },
+        autoLiability: {
+          insuranceCompany: "",
+          policyNumber: "",
+          coverageLimit: "",
+          currency: "USD",
+          deductible: "",
+          effectiveDate: "",
+          expiryDate: "",
+        },
+        trailerLiability: {
+          insuranceCompany: "",
+          policyNumber: "",
+          coverageLimit: "",
+          currency: "USD",
+          deductible: "",
+          effectiveDate: "",
+          expiryDate: "",
+        },
+      },
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -262,21 +308,13 @@ const Dashboard = () => {
               <>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium truncate">{selectedFile?.name}</p>
-                    <label htmlFor="file-upload-change" className="cursor-pointer">
-                      <span className="text-xs text-primary hover:underline">Change</span>
-                      <input
-                        id="file-upload-change"
-                        type="file"
-                        className="hidden"
-                        accept=".pdf,image/jpeg,image/png,image/webp"
-                        onChange={handleFileSelect}
-                      />
-                    </label>
+                    <p className="text-sm font-medium truncate">
+                      {selectedFile?.name || uploadedDocuments[0]?.fileName}
+                    </p>
                   </div>
                   
                   <div className="border rounded-lg overflow-hidden bg-muted">
-                    {selectedFile?.type === "application/pdf" ? (
+                    {(selectedFile?.type || processedFileType) === "application/pdf" ? (
                       filePreviewUrl && <PDFViewer fileUrl={filePreviewUrl} />
                     ) : (
                       <div className="space-y-2">
@@ -326,23 +364,34 @@ const Dashboard = () => {
               </>
             )}
             
-            <Button
-              onClick={handleUpload}
-              disabled={!selectedFile || isUploading || isProcessing}
-              className="w-full"
-            >
-              {isUploading || isProcessing ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {isUploading ? "Uploading..." : "Processing..."}
-                </>
-              ) : (
-                <>
-                  <FileText className="mr-2 h-4 w-4" />
-                  Upload & Process
-                </>
-              )}
-            </Button>
+            {uploadedDocuments.length === 0 || !processedFileType ? (
+              <Button
+                onClick={handleUpload}
+                disabled={!selectedFile || isUploading || isProcessing}
+                className="w-full"
+              >
+                {isUploading || isProcessing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {isUploading ? "Uploading..." : "Processing..."}
+                  </>
+                ) : (
+                  <>
+                    <FileText className="mr-2 h-4 w-4" />
+                    Upload & Process
+                  </>
+                )}
+              </Button>
+            ) : (
+              <Button
+                onClick={handleUploadNew}
+                variant="outline"
+                className="w-full"
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                Upload New Certificate
+              </Button>
+            )}
           </CardContent>
         </Card>
 
