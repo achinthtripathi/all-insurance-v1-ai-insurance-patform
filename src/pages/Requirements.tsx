@@ -25,28 +25,10 @@ const Requirements = () => {
   const [newSetDescription, setNewSetDescription] = useState("");
 
   useEffect(() => {
-    loadRequirementSets();
+    // TODO: Load requirement sets when auth is enabled
+    // For now, show empty state
+    setIsLoading(false);
   }, []);
-
-  const loadRequirementSets = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("requirement_sets")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setRequirementSets(data || []);
-    } catch (error: any) {
-      toast({
-        title: "Error loading requirement sets",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const createRequirementSet = async () => {
     if (!newSetName.trim()) {
@@ -58,76 +40,23 @@ const Requirements = () => {
       return;
     }
 
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
-      const { error } = await supabase.from("requirement_sets").insert({
-        user_id: user.id,
-        name: newSetName,
-        description: newSetDescription,
-      });
-
-      if (error) throw error;
-
-      await supabase.from("audit_logs").insert({
-        user_id: user.id,
-        action_type: "create",
-        entity_type: "requirement_set",
-        details: { name: newSetName },
-      });
-
-      toast({
-        title: "Success",
-        description: "Requirement set created successfully",
-      });
-
-      setNewSetName("");
-      setNewSetDescription("");
-      setIsDialogOpen(false);
-      loadRequirementSets();
-    } catch (error: any) {
-      toast({
-        title: "Error creating requirement set",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
+    // TODO: Implement with authentication later
+    toast({
+      title: "Info",
+      description: "Authentication required to save data (disabled for development)",
+    });
+    
+    setNewSetName("");
+    setNewSetDescription("");
+    setIsDialogOpen(false);
   };
 
   const deleteRequirementSet = async (id: string, name: string) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
-      const { error } = await supabase
-        .from("requirement_sets")
-        .delete()
-        .eq("id", id);
-
-      if (error) throw error;
-
-      await supabase.from("audit_logs").insert({
-        user_id: user.id,
-        action_type: "delete",
-        entity_type: "requirement_set",
-        entity_id: id,
-        details: { name },
-      });
-
-      toast({
-        title: "Success",
-        description: "Requirement set deleted successfully",
-      });
-
-      loadRequirementSets();
-    } catch (error: any) {
-      toast({
-        title: "Error deleting requirement set",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
+    // TODO: Implement with authentication later
+    toast({
+      title: "Info",
+      description: "Authentication required to delete data (disabled for development)",
+    });
   };
 
   return (

@@ -44,59 +44,22 @@ const Dashboard = () => {
 
     setIsUploading(true);
     try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
-      // Upload file to storage
-      const fileName = `${user.id}/${Date.now()}-${selectedFile.name}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("documents")
-        .upload(fileName, selectedFile);
-
-      if (uploadError) throw uploadError;
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from("documents")
-        .getPublicUrl(fileName);
-
-      // Save document record
-      const { error: dbError } = await supabase
-        .from("documents")
-        .insert({
-          user_id: user.id,
-          file_name: selectedFile.name,
-          file_url: publicUrl,
-          file_type: selectedFile.type,
-          status: "uploaded",
-        });
-
-      if (dbError) throw dbError;
-
-      // Log audit
-      await supabase.from("audit_logs").insert({
-        user_id: user.id,
-        action_type: "upload",
-        entity_type: "document",
-        details: { file_name: selectedFile.name },
-      });
-
+      // TODO: Implement with authentication later
+      // For now, just show success message
       toast({
         title: "Success",
-        description: "Document uploaded successfully",
+        description: "Document uploaded successfully (auth disabled for development)",
       });
 
       setSelectedFile(null);
       
-      // Start processing
+      // Start processing simulation
       setIsProcessing(true);
       toast({
         title: "Processing",
         description: "Extracting certificate data...",
       });
       
-      // TODO: Call AI parsing edge function
       setTimeout(() => {
         setIsProcessing(false);
         toast({

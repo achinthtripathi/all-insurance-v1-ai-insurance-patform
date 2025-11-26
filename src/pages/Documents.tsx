@@ -14,28 +14,10 @@ const Documents = () => {
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    loadDocuments();
+    // TODO: Load documents when auth is enabled
+    // For now, show empty state
+    setIsLoading(false);
   }, []);
-
-  const loadDocuments = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("documents")
-        .select("*")
-        .order("upload_date", { ascending: false });
-
-      if (error) throw error;
-      setDocuments(data || []);
-    } catch (error: any) {
-      toast({
-        title: "Error loading documents",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const filteredDocuments = documents.filter((doc) =>
     doc.file_name.toLowerCase().includes(searchQuery.toLowerCase())
