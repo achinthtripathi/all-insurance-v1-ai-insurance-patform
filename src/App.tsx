@@ -7,10 +7,8 @@ import Dashboard from "./pages/Dashboard";
 import Documents from "./pages/Documents";
 import Requirements from "./pages/Requirements";
 import AuditLog from "./pages/AuditLog";
-import Auth from "./pages/Auth";
 import Layout from "./components/Layout";
 import NotFound from "./pages/NotFound";
-import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -21,9 +19,8 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/auth" element={<Auth />} />
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+          <Route element={<Layout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/documents" element={<Documents />} />
             <Route path="/requirements" element={<Requirements />} />

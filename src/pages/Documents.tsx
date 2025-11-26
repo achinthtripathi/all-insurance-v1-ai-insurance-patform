@@ -6,69 +6,18 @@ import { Search, FileText, Calendar, Eye } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-
-interface Document {
-  id: string;
-  file_name: string;
-  file_type: string;
-  upload_date: string;
-  status: string;
-  file_url: string;
-  extracted_data?: {
-    named_insured: string;
-    certificate_holder: string;
-    additional_insured: string;
-    form_type: string;
-    cancellation_notice_period: string;
-  }[];
-}
 
 const Documents = () => {
   const { toast } = useToast();
-  const [documents, setDocuments] = useState<Document[]>([]);
+  const [documents, setDocuments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    fetchDocuments();
+    // TODO: Load documents when auth is enabled
+    // For now, show empty state
+    setIsLoading(false);
   }, []);
-
-  const fetchDocuments = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('documents')
-        .select(`
-          *,
-          extracted_data (
-            named_insured,
-            certificate_holder,
-            additional_insured,
-            form_type,
-            cancellation_notice_period
-          )
-        `)
-        .order('upload_date', { ascending: false });
-
-      if (error) throw error;
-      setDocuments(data || []);
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: "Failed to load documents",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const filteredDocuments = documents.filter((doc) =>
     doc.file_name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -111,7 +60,7 @@ const Documents = () => {
         </CardContent>
       </Card>
 
-      {/* Documents Table */}
+      {/* Documents List */}
       {isLoading ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
@@ -125,63 +74,35 @@ const Documents = () => {
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>File Name</TableHead>
-                  <TableHead>Named Insured</TableHead>
-                  <TableHead>Certificate Holder</TableHead>
-                  <TableHead>Form Type</TableHead>
-                  <TableHead>Upload Date</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredDocuments.map((doc) => {
-                  const extractedData = doc.extracted_data?.[0];
-                  return (
-                    <TableRow key={doc.id}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-muted-foreground" />
-                          {doc.file_name}
-                        </div>
-                      </TableCell>
-                      <TableCell>{extractedData?.named_insured || "-"}</TableCell>
-                      <TableCell>{extractedData?.certificate_holder || "-"}</TableCell>
-                      <TableCell>{extractedData?.form_type || "-"}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
+        <div className="space-y-3">
+          {filteredDocuments.map((doc) => (
+            <Card key={doc.id} className="hover:shadow-md transition-shadow">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <FileText className="h-8 w-8 text-primary flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium truncate">{doc.file_name}</h3>
+                      <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
+                        <span className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
                           {new Date(doc.upload_date).toLocaleDateString()}
-                        </div>
-                      </TableCell>
-                      <TableCell>
+                        </span>
                         <Badge variant={getStatusColor(doc.status) as any}>
                           {doc.status}
                         </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="gap-2"
-                          onClick={() => window.open(doc.file_url, '_blank')}
-                        >
-                          <Eye className="h-4 w-4" />
-                          View
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                      </div>
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm" className="gap-2 flex-shrink-0">
+                    <Eye className="h-4 w-4" />
+                    View
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       )}
     </div>
   );
