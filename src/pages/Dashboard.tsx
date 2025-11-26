@@ -275,16 +275,26 @@ const Dashboard = () => {
                   
                   <div className="border rounded-lg overflow-hidden bg-muted">
                     {selectedFile?.type === "application/pdf" ? (
-                      <iframe
-                        src={filePreviewUrl}
-                        className="w-full h-[500px]"
-                        title="PDF Preview"
-                      />
+                      <div className="flex flex-col items-center justify-center gap-3 p-6">
+                        <p className="text-sm text-muted-foreground text-center">
+                          PDF preview is not available inside this panel, but you can open the
+                          certificate in a full browser tab.
+                        </p>
+                        <Button asChild variant="outline" size="sm">
+                          <a href={filePreviewUrl || "#"} target="_blank" rel="noreferrer">
+                            <FileText className="mr-2 h-4 w-4" />
+                            Open PDF Preview
+                          </a>
+                        </Button>
+                      </div>
                     ) : (
                       <img
-                        src={filePreviewUrl}
-                        alt="Certificate Preview"
-                        className="w-full h-auto max-h-[500px] object-contain"
+                        src={filePreviewUrl || ""}
+                        alt="Certificate preview"
+                        className="w-full h-auto max-h-[500px] object-contain bg-background"
+                        onError={(e) => {
+                          e.currentTarget.alt = "Certificate preview unavailable";
+                        }}
                       />
                     )}
                   </div>
