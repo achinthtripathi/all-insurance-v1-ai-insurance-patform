@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Upload, FileText, Loader2, Eye, Calendar } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 
 interface UploadedDocument {
   id: string;
@@ -14,12 +17,72 @@ interface UploadedDocument {
   fileUrl: string;
 }
 
+interface ExtractedData {
+  namedInsured: string;
+  certificateHolder: string;
+  additionalInsured: string;
+  cancellationNotice: string;
+  formType: string;
+  coverages: {
+    generalLiability: CoverageDetail;
+    autoLiability: CoverageDetail;
+    trailerLiability: CoverageDetail;
+  };
+}
+
+interface CoverageDetail {
+  insuranceCompany: string;
+  policyNumber: string;
+  coverageLimit: string;
+  currency: string;
+  deductible: string;
+  effectiveDate: string;
+  expiryDate: string;
+}
+
 const Dashboard = () => {
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadedDocuments, setUploadedDocuments] = useState<UploadedDocument[]>([]);
+  const [extractedData, setExtractedData] = useState<ExtractedData>({
+    namedInsured: "",
+    certificateHolder: "",
+    additionalInsured: "",
+    cancellationNotice: "",
+    formType: "",
+    coverages: {
+      generalLiability: {
+        insuranceCompany: "",
+        policyNumber: "",
+        coverageLimit: "",
+        currency: "USD",
+        deductible: "",
+        effectiveDate: "",
+        expiryDate: "",
+      },
+      autoLiability: {
+        insuranceCompany: "",
+        policyNumber: "",
+        coverageLimit: "",
+        currency: "USD",
+        deductible: "",
+        effectiveDate: "",
+        expiryDate: "",
+      },
+      trailerLiability: {
+        insuranceCompany: "",
+        policyNumber: "",
+        coverageLimit: "",
+        currency: "USD",
+        deductible: "",
+        effectiveDate: "",
+        expiryDate: "",
+      },
+    },
+  });
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -45,7 +108,10 @@ const Dashboard = () => {
         return;
       }
       
+      // Create preview URL
+      const previewUrl = URL.createObjectURL(file);
       setSelectedFile(file);
+      setFilePreviewUrl(previewUrl);
     }
   };
 
@@ -95,6 +161,44 @@ const Dashboard = () => {
           )
         );
         
+        // Simulate extracted data
+        setExtractedData({
+          namedInsured: "ABC Company Inc.",
+          certificateHolder: "XYZ Corporation",
+          additionalInsured: "XYZ Corp and subsidiaries",
+          cancellationNotice: "30 days",
+          formType: "ACORD 25",
+          coverages: {
+            generalLiability: {
+              insuranceCompany: "Sample Insurance Co.",
+              policyNumber: "GL-123456",
+              coverageLimit: "1,000,000",
+              currency: "USD",
+              deductible: "5,000",
+              effectiveDate: "2024-01-01",
+              expiryDate: "2025-01-01",
+            },
+            autoLiability: {
+              insuranceCompany: "Auto Insurance Co.",
+              policyNumber: "AL-789012",
+              coverageLimit: "2,000,000",
+              currency: "USD",
+              deductible: "10,000",
+              effectiveDate: "2024-01-01",
+              expiryDate: "2025-01-01",
+            },
+            trailerLiability: {
+              insuranceCompany: "Trailer Insurance Co.",
+              policyNumber: "TL-345678",
+              coverageLimit: "500,000",
+              currency: "USD",
+              deductible: "2,500",
+              effectiveDate: "2024-01-01",
+              expiryDate: "2025-01-01",
+            },
+          },
+        });
+        
         toast({
           title: "Processing complete",
           description: "Certificate data extracted successfully",
@@ -121,8 +225,8 @@ const Dashboard = () => {
         </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Upload Card */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Upload & Preview Card */}
         <Card className="lg:col-span-1">
           <CardHeader>
             <CardTitle>Upload Certificate</CardTitle>
@@ -131,24 +235,62 @@ const Dashboard = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-8 hover:border-primary transition-colors">
-              <Upload className="h-10 w-10 text-muted-foreground mb-3" />
-              <div className="text-center space-y-2">
-                <p className="text-sm font-medium">
-                  {selectedFile ? selectedFile.name : "Choose a file or drag it here"}
-                </p>
-                <label htmlFor="file-upload" className="cursor-pointer">
-                  <span className="text-sm text-primary hover:underline">Browse files</span>
-                  <input
-                    id="file-upload"
-                    type="file"
-                    className="hidden"
-                    accept=".pdf,image/jpeg,image/png,image/webp"
-                    onChange={handleFileSelect}
-                  />
-                </label>
-              </div>
-            </div>
+            {!filePreviewUrl ? (
+              <>
+                <div className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-8 hover:border-primary transition-colors">
+                  <Upload className="h-10 w-10 text-muted-foreground mb-3" />
+                  <div className="text-center space-y-2">
+                    <p className="text-sm font-medium">
+                      {selectedFile ? selectedFile.name : "Choose a file or drag it here"}
+                    </p>
+                    <label htmlFor="file-upload" className="cursor-pointer">
+                      <span className="text-sm text-primary hover:underline">Browse files</span>
+                      <input
+                        id="file-upload"
+                        type="file"
+                        className="hidden"
+                        accept=".pdf,image/jpeg,image/png,image/webp"
+                        onChange={handleFileSelect}
+                      />
+                    </label>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium truncate">{selectedFile?.name}</p>
+                    <label htmlFor="file-upload-change" className="cursor-pointer">
+                      <span className="text-xs text-primary hover:underline">Change</span>
+                      <input
+                        id="file-upload-change"
+                        type="file"
+                        className="hidden"
+                        accept=".pdf,image/jpeg,image/png,image/webp"
+                        onChange={handleFileSelect}
+                      />
+                    </label>
+                  </div>
+                  
+                  <div className="border rounded-lg overflow-hidden bg-muted">
+                    {selectedFile?.type === "application/pdf" ? (
+                      <iframe
+                        src={filePreviewUrl}
+                        className="w-full h-[500px]"
+                        title="PDF Preview"
+                      />
+                    ) : (
+                      <img
+                        src={filePreviewUrl}
+                        alt="Certificate Preview"
+                        className="w-full h-auto max-h-[500px] object-contain"
+                      />
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
             
             <Button
               onClick={handleUpload}
@@ -170,35 +312,356 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Info Card */}
-        <Card className="lg:col-span-2">
+        {/* Extracted Data Form Card */}
+        <Card className="lg:col-span-1">
           <CardHeader>
-            <CardTitle>What Gets Extracted</CardTitle>
+            <CardTitle>Extracted Certificate Data</CardTitle>
             <CardDescription>
-              AI-powered parsing extracts key certificate data
+              Review and edit extracted fields
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <h4 className="font-medium">General Information</h4>
-              <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                <li>Named Insured</li>
-                <li>Certificate Holder Name</li>
-                <li>Additional Insured</li>
-                <li>Cancellation Notice Period</li>
-                <li>Form Type</li>
-              </ul>
+          <CardContent className="space-y-6">
+            {/* General Information Section */}
+            <div className="space-y-4">
+              <h4 className="font-semibold text-sm">General Information</h4>
+              
+              <div className="space-y-2">
+                <Label htmlFor="namedInsured">Named Insured</Label>
+                <Input
+                  id="namedInsured"
+                  value={extractedData.namedInsured}
+                  onChange={(e) => setExtractedData({ ...extractedData, namedInsured: e.target.value })}
+                  placeholder="Enter named insured"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="certificateHolder">Certificate Holder</Label>
+                <Input
+                  id="certificateHolder"
+                  value={extractedData.certificateHolder}
+                  onChange={(e) => setExtractedData({ ...extractedData, certificateHolder: e.target.value })}
+                  placeholder="Enter certificate holder"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="additionalInsured">Additional Insured</Label>
+                <Input
+                  id="additionalInsured"
+                  value={extractedData.additionalInsured}
+                  onChange={(e) => setExtractedData({ ...extractedData, additionalInsured: e.target.value })}
+                  placeholder="Enter additional insured"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="cancellationNotice">Cancellation Notice</Label>
+                  <Input
+                    id="cancellationNotice"
+                    value={extractedData.cancellationNotice}
+                    onChange={(e) => setExtractedData({ ...extractedData, cancellationNotice: e.target.value })}
+                    placeholder="e.g., 30 days"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="formType">Form Type</Label>
+                  <Input
+                    id="formType"
+                    value={extractedData.formType}
+                    onChange={(e) => setExtractedData({ ...extractedData, formType: e.target.value })}
+                    placeholder="e.g., ACORD 25"
+                  />
+                </div>
+              </div>
             </div>
-            
-            <div className="space-y-2">
-              <h4 className="font-medium">Coverage Details</h4>
-              <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                <li>Commercial General Liability</li>
-                <li>Automobile Liability</li>
-                <li>Non-Owned Trailer Liability</li>
-                <li>Policy numbers, limits, dates</li>
-                <li>Deductibles and currency</li>
-              </ul>
+
+            <Separator />
+
+            {/* Coverages Section */}
+            <div className="space-y-6">
+              <h4 className="font-semibold text-sm">Coverage Details</h4>
+              
+              {/* Commercial General Liability */}
+              <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+                <h5 className="font-medium text-sm">Commercial General Liability</h5>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label className="text-xs">Insurance Company</Label>
+                    <Input
+                      value={extractedData.coverages.generalLiability.insuranceCompany}
+                      onChange={(e) => setExtractedData({
+                        ...extractedData,
+                        coverages: {
+                          ...extractedData.coverages,
+                          generalLiability: { ...extractedData.coverages.generalLiability, insuranceCompany: e.target.value }
+                        }
+                      })}
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Policy Number</Label>
+                    <Input
+                      value={extractedData.coverages.generalLiability.policyNumber}
+                      onChange={(e) => setExtractedData({
+                        ...extractedData,
+                        coverages: {
+                          ...extractedData.coverages,
+                          generalLiability: { ...extractedData.coverages.generalLiability, policyNumber: e.target.value }
+                        }
+                      })}
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Coverage Limit</Label>
+                    <Input
+                      value={extractedData.coverages.generalLiability.coverageLimit}
+                      onChange={(e) => setExtractedData({
+                        ...extractedData,
+                        coverages: {
+                          ...extractedData.coverages,
+                          generalLiability: { ...extractedData.coverages.generalLiability, coverageLimit: e.target.value }
+                        }
+                      })}
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Deductible</Label>
+                    <Input
+                      value={extractedData.coverages.generalLiability.deductible}
+                      onChange={(e) => setExtractedData({
+                        ...extractedData,
+                        coverages: {
+                          ...extractedData.coverages,
+                          generalLiability: { ...extractedData.coverages.generalLiability, deductible: e.target.value }
+                        }
+                      })}
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Effective Date</Label>
+                    <Input
+                      type="date"
+                      value={extractedData.coverages.generalLiability.effectiveDate}
+                      onChange={(e) => setExtractedData({
+                        ...extractedData,
+                        coverages: {
+                          ...extractedData.coverages,
+                          generalLiability: { ...extractedData.coverages.generalLiability, effectiveDate: e.target.value }
+                        }
+                      })}
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Expiry Date</Label>
+                    <Input
+                      type="date"
+                      value={extractedData.coverages.generalLiability.expiryDate}
+                      onChange={(e) => setExtractedData({
+                        ...extractedData,
+                        coverages: {
+                          ...extractedData.coverages,
+                          generalLiability: { ...extractedData.coverages.generalLiability, expiryDate: e.target.value }
+                        }
+                      })}
+                      className="h-9"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Automobile Liability */}
+              <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+                <h5 className="font-medium text-sm">Automobile Liability</h5>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label className="text-xs">Insurance Company</Label>
+                    <Input
+                      value={extractedData.coverages.autoLiability.insuranceCompany}
+                      onChange={(e) => setExtractedData({
+                        ...extractedData,
+                        coverages: {
+                          ...extractedData.coverages,
+                          autoLiability: { ...extractedData.coverages.autoLiability, insuranceCompany: e.target.value }
+                        }
+                      })}
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Policy Number</Label>
+                    <Input
+                      value={extractedData.coverages.autoLiability.policyNumber}
+                      onChange={(e) => setExtractedData({
+                        ...extractedData,
+                        coverages: {
+                          ...extractedData.coverages,
+                          autoLiability: { ...extractedData.coverages.autoLiability, policyNumber: e.target.value }
+                        }
+                      })}
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Coverage Limit</Label>
+                    <Input
+                      value={extractedData.coverages.autoLiability.coverageLimit}
+                      onChange={(e) => setExtractedData({
+                        ...extractedData,
+                        coverages: {
+                          ...extractedData.coverages,
+                          autoLiability: { ...extractedData.coverages.autoLiability, coverageLimit: e.target.value }
+                        }
+                      })}
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Deductible</Label>
+                    <Input
+                      value={extractedData.coverages.autoLiability.deductible}
+                      onChange={(e) => setExtractedData({
+                        ...extractedData,
+                        coverages: {
+                          ...extractedData.coverages,
+                          autoLiability: { ...extractedData.coverages.autoLiability, deductible: e.target.value }
+                        }
+                      })}
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Effective Date</Label>
+                    <Input
+                      type="date"
+                      value={extractedData.coverages.autoLiability.effectiveDate}
+                      onChange={(e) => setExtractedData({
+                        ...extractedData,
+                        coverages: {
+                          ...extractedData.coverages,
+                          autoLiability: { ...extractedData.coverages.autoLiability, effectiveDate: e.target.value }
+                        }
+                      })}
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Expiry Date</Label>
+                    <Input
+                      type="date"
+                      value={extractedData.coverages.autoLiability.expiryDate}
+                      onChange={(e) => setExtractedData({
+                        ...extractedData,
+                        coverages: {
+                          ...extractedData.coverages,
+                          autoLiability: { ...extractedData.coverages.autoLiability, expiryDate: e.target.value }
+                        }
+                      })}
+                      className="h-9"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Non-Owned Trailer Liability */}
+              <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+                <h5 className="font-medium text-sm">Non-Owned Trailer Liability</h5>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label className="text-xs">Insurance Company</Label>
+                    <Input
+                      value={extractedData.coverages.trailerLiability.insuranceCompany}
+                      onChange={(e) => setExtractedData({
+                        ...extractedData,
+                        coverages: {
+                          ...extractedData.coverages,
+                          trailerLiability: { ...extractedData.coverages.trailerLiability, insuranceCompany: e.target.value }
+                        }
+                      })}
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Policy Number</Label>
+                    <Input
+                      value={extractedData.coverages.trailerLiability.policyNumber}
+                      onChange={(e) => setExtractedData({
+                        ...extractedData,
+                        coverages: {
+                          ...extractedData.coverages,
+                          trailerLiability: { ...extractedData.coverages.trailerLiability, policyNumber: e.target.value }
+                        }
+                      })}
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Coverage Limit</Label>
+                    <Input
+                      value={extractedData.coverages.trailerLiability.coverageLimit}
+                      onChange={(e) => setExtractedData({
+                        ...extractedData,
+                        coverages: {
+                          ...extractedData.coverages,
+                          trailerLiability: { ...extractedData.coverages.trailerLiability, coverageLimit: e.target.value }
+                        }
+                      })}
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Deductible</Label>
+                    <Input
+                      value={extractedData.coverages.trailerLiability.deductible}
+                      onChange={(e) => setExtractedData({
+                        ...extractedData,
+                        coverages: {
+                          ...extractedData.coverages,
+                          trailerLiability: { ...extractedData.coverages.trailerLiability, deductible: e.target.value }
+                        }
+                      })}
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Effective Date</Label>
+                    <Input
+                      type="date"
+                      value={extractedData.coverages.trailerLiability.effectiveDate}
+                      onChange={(e) => setExtractedData({
+                        ...extractedData,
+                        coverages: {
+                          ...extractedData.coverages,
+                          trailerLiability: { ...extractedData.coverages.trailerLiability, effectiveDate: e.target.value }
+                        }
+                      })}
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Expiry Date</Label>
+                    <Input
+                      type="date"
+                      value={extractedData.coverages.trailerLiability.expiryDate}
+                      onChange={(e) => setExtractedData({
+                        ...extractedData,
+                        coverages: {
+                          ...extractedData.coverages,
+                          trailerLiability: { ...extractedData.coverages.trailerLiability, expiryDate: e.target.value }
+                        }
+                      })}
+                      className="h-9"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
