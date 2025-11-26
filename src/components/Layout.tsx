@@ -1,11 +1,23 @@
 import { useNavigate, useLocation, Outlet } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { FileText, FolderOpen, Shield, History, Upload } from "lucide-react";
+import { FileText, FolderOpen, Shield, History, Upload, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 
 const Layout = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { toast } = useToast();
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    toast({
+      title: "Logged out",
+      description: "You have been logged out successfully",
+    });
+    navigate("/auth");
+  };
 
   const navItems = [
     { path: "/dashboard", label: "Upload", icon: Upload },
@@ -45,7 +57,9 @@ const Layout = () => {
             })}
           </nav>
           
-          <div className="w-10" />
+          <Button variant="ghost" size="icon" onClick={handleLogout} title="Logout">
+            <LogOut className="h-4 w-4" />
+          </Button>
         </div>
       </header>
 

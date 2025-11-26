@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import PDFViewer from "@/components/PDFViewer";
+import { supabase } from "@/integrations/supabase/client";
 
 interface UploadedDocument {
   id: string;
@@ -119,25 +120,45 @@ const Dashboard = () => {
   };
 
   const handleUpload = async () => {
-    if (!selectedFile) return;
-
+    if (!selectedFile || !filePreviewUrl) return;
+    
     setIsUploading(true);
+    
     try {
-      // Create a local URL for the uploaded file (development mode)
-      const fileUrl = URL.createObjectURL(selectedFile);
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      // Upload file to storage
+      const fileExt = selectedFile.name.split('.').pop();
+      const filePath = `${user.id}/${Date.now()}.${fileExt}`;
       
-      const newDocument: UploadedDocument = {
-        id: Date.now().toString(),
-        fileName: selectedFile.name,
-        fileType: selectedFile.type,
-        uploadDate: new Date(),
-        status: "processing",
-        fileUrl: fileUrl,
-      };
-      
-      // Add to documents list
-      setUploadedDocuments(prev => [newDocument, ...prev]);
-      
+      const { error: uploadError } = await supabase.storage
+        .from('documents')
+        .upload(filePath, selectedFile);
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('documents')
+        .getPublicUrl(filePath);
+
+      // Save document record
+      const { data: documentData, error: docError } = await supabase
+        .from('documents')
+        .insert({
+          user_id: user.id,
+          file_name: selectedFile.name,
+          file_type: selectedFile.type,
+          file_url: publicUrl,
+          status: 'processing',
+        })
+        .select()
+        .single();
+
+      if (docError) throw docError;
+
       toast({
         title: "Success",
         description: "Document uploaded successfully",
@@ -153,20 +174,11 @@ const Dashboard = () => {
         description: "Extracting certificate data...",
       });
       
-      setTimeout(() => {
+      setTimeout(async () => {
         setIsProcessing(false);
         
-        // Update document status to completed
-        setUploadedDocuments(prev => 
-          prev.map(doc => 
-            doc.id === newDocument.id 
-              ? { ...doc, status: "completed" }
-              : doc
-          )
-        );
-        
         // Simulate extracted data
-        setExtractedData({
+        const extractedInfo = {
           namedInsured: "ABC Company Inc.",
           certificateHolder: "XYZ Corporation",
           additionalInsured: "XYZ Corp and subsidiaries",
@@ -179,8 +191,8 @@ const Dashboard = () => {
               coverageLimit: "1,000,000",
               currency: "USD",
               deductible: "5,000",
-              effectiveDate: "2024-01-01",
-              expiryDate: "2025-01-01",
+              effectiveDate: "2025-01-01",
+              expiryDate: "2026-01-01",
             },
             autoLiability: {
               insuranceCompany: "Auto Insurance Co.",
@@ -188,8 +200,8 @@ const Dashboard = () => {
               coverageLimit: "2,000,000",
               currency: "USD",
               deductible: "10,000",
-              effectiveDate: "2024-01-01",
-              expiryDate: "2025-01-01",
+              effectiveDate: "2025-01-01",
+              expiryDate: "2026-01-01",
             },
             trailerLiability: {
               insuranceCompany: "Trailer Insurance Co.",
@@ -197,19 +209,65 @@ const Dashboard = () => {
               coverageLimit: "500,000",
               currency: "USD",
               deductible: "2,500",
-              effectiveDate: "2024-01-01",
-              expiryDate: "2025-01-01",
+              effectiveDate: "2025-01-01",
+              expiryDate: "2026-01-01",
             },
           },
-        });
-        
-        toast({
-          title: "Processing complete",
-          description: "Certificate data extracted successfully",
-        });
+        };
+
+        setExtractedData(extractedInfo);
+
+        // Save extracted data to database
+        try {
+          const { error: extractError } = await supabase
+            .from('extracted_data')
+            .insert({
+              document_id: documentData.id,
+              named_insured: extractedInfo.namedInsured,
+              certificate_holder: extractedInfo.certificateHolder,
+              additional_insured: extractedInfo.additionalInsured,
+              cancellation_notice_period: extractedInfo.cancellationNotice,
+              form_type: extractedInfo.formType,
+              coverages: [
+                {
+                  type: 'general_liability',
+                  ...extractedInfo.coverages.generalLiability,
+                },
+                {
+                  type: 'automobile_liability',
+                  ...extractedInfo.coverages.autoLiability,
+                },
+                {
+                  type: 'trailer_liability',
+                  ...extractedInfo.coverages.trailerLiability,
+                },
+              ],
+            });
+
+          if (extractError) throw extractError;
+
+          // Update document status
+          await supabase
+            .from('documents')
+            .update({ status: 'uploaded' })
+            .eq('id', documentData.id);
+          
+          toast({
+            title: "Processing complete",
+            description: "Certificate data extracted and saved successfully",
+          });
+        } catch (err: any) {
+          console.error('Error saving extracted data:', err);
+          toast({
+            title: "Warning",
+            description: "Extraction completed but failed to save data",
+            variant: "destructive",
+          });
+        }
       }, 3000);
       
     } catch (error: any) {
+      console.error('Upload error:', error);
       toast({
         title: "Upload failed",
         description: error.message,
