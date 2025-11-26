@@ -125,6 +125,40 @@ const Dashboard = () => {
     setIsUploading(true);
     
     try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      // Upload file to storage
+      const fileExt = selectedFile.name.split('.').pop();
+      const filePath = `${user.id}/${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('documents')
+        .upload(filePath, selectedFile);
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('documents')
+        .getPublicUrl(filePath);
+
+      // Save document record
+      const { data: documentData, error: docError } = await supabase
+        .from('documents')
+        .insert({
+          user_id: user.id,
+          file_name: selectedFile.name,
+          file_type: selectedFile.type,
+          file_url: publicUrl,
+          status: 'processing',
+        })
+        .select()
+        .single();
+
+      if (docError) throw docError;
+
       toast({
         title: "Success",
         description: "Document uploaded successfully",
@@ -182,11 +216,54 @@ const Dashboard = () => {
         };
 
         setExtractedData(extractedInfo);
-        
-        toast({
-          title: "Processing complete",
-          description: "Certificate data extracted successfully",
-        });
+
+        // Save extracted data to database
+        try {
+          const { error: extractError } = await supabase
+            .from('extracted_data')
+            .insert({
+              document_id: documentData.id,
+              named_insured: extractedInfo.namedInsured,
+              certificate_holder: extractedInfo.certificateHolder,
+              additional_insured: extractedInfo.additionalInsured,
+              cancellation_notice_period: extractedInfo.cancellationNotice,
+              form_type: extractedInfo.formType,
+              coverages: [
+                {
+                  type: 'general_liability',
+                  ...extractedInfo.coverages.generalLiability,
+                },
+                {
+                  type: 'automobile_liability',
+                  ...extractedInfo.coverages.autoLiability,
+                },
+                {
+                  type: 'trailer_liability',
+                  ...extractedInfo.coverages.trailerLiability,
+                },
+              ],
+            });
+
+          if (extractError) throw extractError;
+
+          // Update document status
+          await supabase
+            .from('documents')
+            .update({ status: 'uploaded' })
+            .eq('id', documentData.id);
+          
+          toast({
+            title: "Processing complete",
+            description: "Certificate data extracted and saved successfully",
+          });
+        } catch (err: any) {
+          console.error('Error saving extracted data:', err);
+          toast({
+            title: "Warning",
+            description: "Extraction completed but failed to save data",
+            variant: "destructive",
+          });
+        }
       }, 3000);
       
     } catch (error: any) {
