@@ -1,37 +1,11 @@
-import { useEffect, useState } from "react";
 import { useNavigate, useLocation, Outlet } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { FileText, FolderOpen, Shield, History, LogOut, Upload } from "lucide-react";
+import { FileText, FolderOpen, Shield, History, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const Layout = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [user, setUser] = useState<any>(null);
-
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-      if (!session) {
-        navigate("/auth");
-      }
-    });
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (!session) {
-        navigate("/auth");
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate("/auth");
-  };
 
   const navItems = [
     { path: "/dashboard", label: "Upload", icon: Upload },
@@ -71,10 +45,7 @@ const Layout = () => {
             })}
           </nav>
           
-          <Button variant="outline" onClick={handleLogout} className="gap-2">
-            <LogOut className="h-4 w-4" />
-            Logout
-          </Button>
+          <div className="w-10" />
         </div>
       </header>
 
