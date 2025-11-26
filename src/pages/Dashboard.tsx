@@ -8,7 +8,6 @@ import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import PDFViewer from "@/components/PDFViewer";
-import { supabase } from "@/integrations/supabase/client";
 
 interface UploadedDocument {
   id: string;
@@ -123,177 +122,101 @@ const Dashboard = () => {
     if (!selectedFile) return;
 
     setIsUploading(true);
-    setIsProcessing(true);
-    
     try {
-      // Store file type for preview after processing
-      setProcessedFileType(selectedFile.type);
-
+      // Create a local URL for the uploaded file (development mode)
+      const fileUrl = URL.createObjectURL(selectedFile);
+      
+      const newDocument: UploadedDocument = {
+        id: Date.now().toString(),
+        fileName: selectedFile.name,
+        fileType: selectedFile.type,
+        uploadDate: new Date(),
+        status: "processing",
+        fileUrl: fileUrl,
+      };
+      
+      // Add to documents list
+      setUploadedDocuments(prev => [newDocument, ...prev]);
+      
       toast({
-        title: "Uploading",
-        description: "Uploading file to storage...",
+        title: "Success",
+        description: "Document uploaded successfully",
       });
 
-      // Upload file to Supabase Storage
-      const fileExt = selectedFile.name.split('.').pop();
-      const fileName = `${Date.now()}.${fileExt}`;
-      const filePath = `certificates/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('documents')
-        .upload(filePath, selectedFile);
-
-      if (uploadError) throw uploadError;
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('documents')
-        .getPublicUrl(filePath);
-
+      // Store file type for preview after processing
+      setProcessedFileType(selectedFile.type);
+      
+      // Start processing simulation
+      setIsProcessing(true);
       toast({
         title: "Processing",
         description: "Extracting certificate data...",
       });
-
-      // Simulate extraction (would be real AI parsing in production)
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Mock extracted data
-      const mockExtractedData = {
-        namedInsured: "ABC Company Inc.",
-        certificateHolder: "XYZ Corporation",
-        additionalInsured: "XYZ Corp and subsidiaries",
-        cancellationNotice: "30 days",
-        formType: "ACORD 25",
-        coverages: {
-          generalLiability: {
-            insuranceCompany: "Sample Insurance Co.",
-            policyNumber: "GL-123456",
-            coverageLimit: "1,000,000",
-            currency: "USD",
-            deductible: "5,000",
-            effectiveDate: "2024-01-01",
-            expiryDate: "2025-01-01",
-          },
-          autoLiability: {
-            insuranceCompany: "Auto Insurance Co.",
-            policyNumber: "AL-789012",
-            coverageLimit: "2,000,000",
-            currency: "USD",
-            deductible: "10,000",
-            effectiveDate: "2024-01-01",
-            expiryDate: "2025-01-01",
-          },
-          trailerLiability: {
-            insuranceCompany: "Trailer Insurance Co.",
-            policyNumber: "TL-345678",
-            coverageLimit: "500,000",
-            currency: "USD",
-            deductible: "2,500",
-            effectiveDate: "2024-01-01",
-            expiryDate: "2025-01-01",
-          },
-        },
-      };
-
-      // Temporary user ID for development (until auth is implemented)
-      const tempUserId = '00000000-0000-0000-0000-000000000000';
-
-      // Insert document record
-      const { data: documentData, error: docError } = await supabase
-        .from('documents')
-        .insert({
-          user_id: tempUserId,
-          file_name: selectedFile.name,
-          file_type: selectedFile.type,
-          file_url: publicUrl,
-          status: 'uploaded',
-        })
-        .select()
-        .single();
-
-      if (docError) throw docError;
-
-      // Prepare coverages data for database
-      const coveragesArray = [
-        {
-          type: "Commercial General Liability",
-          company: mockExtractedData.coverages.generalLiability.insuranceCompany,
-          policyNumber: mockExtractedData.coverages.generalLiability.policyNumber,
-          limits: mockExtractedData.coverages.generalLiability.coverageLimit,
-          limitsCurrency: mockExtractedData.coverages.generalLiability.currency,
-          deductible: mockExtractedData.coverages.generalLiability.deductible,
-          deductibleCurrency: mockExtractedData.coverages.generalLiability.currency,
-          effectiveDate: mockExtractedData.coverages.generalLiability.effectiveDate,
-          expiryDate: mockExtractedData.coverages.generalLiability.expiryDate,
-        },
-        {
-          type: "Automobile Liability",
-          company: mockExtractedData.coverages.autoLiability.insuranceCompany,
-          policyNumber: mockExtractedData.coverages.autoLiability.policyNumber,
-          limits: mockExtractedData.coverages.autoLiability.coverageLimit,
-          limitsCurrency: mockExtractedData.coverages.autoLiability.currency,
-          deductible: mockExtractedData.coverages.autoLiability.deductible,
-          deductibleCurrency: mockExtractedData.coverages.autoLiability.currency,
-          effectiveDate: mockExtractedData.coverages.autoLiability.effectiveDate,
-          expiryDate: mockExtractedData.coverages.autoLiability.expiryDate,
-        },
-        {
-          type: "Non-Owned Trailer Liability",
-          company: mockExtractedData.coverages.trailerLiability.insuranceCompany,
-          policyNumber: mockExtractedData.coverages.trailerLiability.policyNumber,
-          limits: mockExtractedData.coverages.trailerLiability.coverageLimit,
-          limitsCurrency: mockExtractedData.coverages.trailerLiability.currency,
-          deductible: mockExtractedData.coverages.trailerLiability.deductible,
-          deductibleCurrency: mockExtractedData.coverages.trailerLiability.currency,
-          effectiveDate: mockExtractedData.coverages.trailerLiability.effectiveDate,
-          expiryDate: mockExtractedData.coverages.trailerLiability.expiryDate,
-        },
-      ];
-
-      // Insert extracted data
-      const { error: extractError } = await supabase
-        .from('extracted_data')
-        .insert({
-          document_id: documentData.id,
-          named_insured: mockExtractedData.namedInsured,
-          certificate_holder: mockExtractedData.certificateHolder,
-          additional_insured: mockExtractedData.additionalInsured,
-          cancellation_notice_period: mockExtractedData.cancellationNotice,
-          form_type: mockExtractedData.formType,
-          coverages: coveragesArray,
-        });
-
-      if (extractError) throw extractError;
-
-      // Update local state
-      setExtractedData(mockExtractedData);
-
-      const newDocument: UploadedDocument = {
-        id: documentData.id,
-        fileName: selectedFile.name,
-        fileType: selectedFile.type,
-        uploadDate: new Date(),
-        status: "completed",
-        fileUrl: publicUrl,
-      };
       
-      setUploadedDocuments(prev => [newDocument, ...prev]);
-
-      toast({
-        title: "Success",
-        description: "Certificate uploaded and saved to Documents",
-      });
+      setTimeout(() => {
+        setIsProcessing(false);
+        
+        // Update document status to completed
+        setUploadedDocuments(prev => 
+          prev.map(doc => 
+            doc.id === newDocument.id 
+              ? { ...doc, status: "completed" }
+              : doc
+          )
+        );
+        
+        // Simulate extracted data
+        setExtractedData({
+          namedInsured: "ABC Company Inc.",
+          certificateHolder: "XYZ Corporation",
+          additionalInsured: "XYZ Corp and subsidiaries",
+          cancellationNotice: "30 days",
+          formType: "ACORD 25",
+          coverages: {
+            generalLiability: {
+              insuranceCompany: "Sample Insurance Co.",
+              policyNumber: "GL-123456",
+              coverageLimit: "1,000,000",
+              currency: "USD",
+              deductible: "5,000",
+              effectiveDate: "2024-01-01",
+              expiryDate: "2025-01-01",
+            },
+            autoLiability: {
+              insuranceCompany: "Auto Insurance Co.",
+              policyNumber: "AL-789012",
+              coverageLimit: "2,000,000",
+              currency: "USD",
+              deductible: "10,000",
+              effectiveDate: "2024-01-01",
+              expiryDate: "2025-01-01",
+            },
+            trailerLiability: {
+              insuranceCompany: "Trailer Insurance Co.",
+              policyNumber: "TL-345678",
+              coverageLimit: "500,000",
+              currency: "USD",
+              deductible: "2,500",
+              effectiveDate: "2024-01-01",
+              expiryDate: "2025-01-01",
+            },
+          },
+        });
+        
+        toast({
+          title: "Processing complete",
+          description: "Certificate data extracted successfully",
+        });
+      }, 3000);
+      
     } catch (error: any) {
-      console.error('Upload error:', error);
       toast({
         title: "Upload failed",
-        description: error.message || "Failed to process certificate",
+        description: error.message,
         variant: "destructive",
       });
     } finally {
       setIsUploading(false);
-      setIsProcessing(false);
     }
   };
 
