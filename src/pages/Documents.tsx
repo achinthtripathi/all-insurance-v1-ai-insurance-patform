@@ -38,37 +38,10 @@ const Documents = () => {
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    fetchDocuments();
+    // Mock data for demo without auth
+    setDocuments([]);
+    setIsLoading(false);
   }, []);
-
-  const fetchDocuments = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('documents')
-        .select(`
-          *,
-          extracted_data (
-            named_insured,
-            certificate_holder,
-            additional_insured,
-            form_type,
-            cancellation_notice_period
-          )
-        `)
-        .order('upload_date', { ascending: false });
-
-      if (error) throw error;
-      setDocuments(data || []);
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: "Failed to load documents",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const filteredDocuments = documents.filter((doc) =>
     doc.file_name.toLowerCase().includes(searchQuery.toLowerCase())
