@@ -13,7 +13,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { validateExtractedData, ValidationResult } from "@/lib/requirementValidation";
 import { ValidationStatusBadge } from "@/components/ValidationStatusBadge";
 import { CERTIFICATE_FIELDS } from "@/lib/certificateFields";
-import { Link } from "react-router-dom";
 
 interface UploadedDocument {
   id: string;
@@ -423,48 +422,35 @@ const Dashboard = () => {
       </div>
 
       {/* Requirement Set Selection */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Requirement Set</CardTitle>
-          <CardDescription>
-            Select a requirement set to validate extracted data against defined rules
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {requirementSets.length > 0 ? (
-            <>
-              <Select value={selectedRequirementSetId} onValueChange={setSelectedRequirementSetId}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a requirement set..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {requirementSets.map((set) => (
-                    <SelectItem key={set.id} value={set.id}>
-                      {set.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {selectedRequirementSetId && requirementRules.length > 0 && (
-                <p className="text-sm text-muted-foreground mt-2">
-                  {requirementRules.length} validation rule{requirementRules.length !== 1 ? "s" : ""} active
-                </p>
-              )}
-            </>
-          ) : (
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                No requirement sets available. Create a requirement set to validate certificate data against your compliance rules.
+      {requirementSets.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Requirement Set</CardTitle>
+            <CardDescription>
+              Select a requirement set to validate extracted data against defined rules
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Select value={selectedRequirementSetId} onValueChange={setSelectedRequirementSetId}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select a requirement set..." />
+              </SelectTrigger>
+              <SelectContent>
+                {requirementSets.map((set) => (
+                  <SelectItem key={set.id} value={set.id}>
+                    {set.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedRequirementSetId && requirementRules.length > 0 && (
+              <p className="text-sm text-muted-foreground mt-2">
+                {requirementRules.length} validation rule{requirementRules.length !== 1 ? "s" : ""} active
               </p>
-              <Link to="/requirements">
-                <Button variant="outline" className="w-full">
-                  Create Requirement Set
-                </Button>
-              </Link>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Upload & Preview Card */}
