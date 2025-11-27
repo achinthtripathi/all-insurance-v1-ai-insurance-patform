@@ -89,6 +89,24 @@ Return ONLY valid JSON, no additional text.`
     let extractedData;
     try {
       extractedData = JSON.parse(extractedText);
+      
+      // Transform the data to match desired format
+      // Extract just the number from cancellation_notice_period
+      if (extractedData.cancellation_notice_period) {
+        const match = extractedData.cancellation_notice_period.match(/\d+/);
+        if (match) {
+          extractedData.cancellation_notice_period = match[0];
+        }
+      }
+      
+      // Convert "0" deductibles to "N/A"
+      if (extractedData.coverages && Array.isArray(extractedData.coverages)) {
+        extractedData.coverages = extractedData.coverages.map((coverage: any) => ({
+          ...coverage,
+          deductible: coverage.deductible === "0" ? "N/A" : coverage.deductible
+        }));
+      }
+      
     } catch (e) {
       console.error('Failed to parse AI response as JSON:', e);
       throw new Error('Invalid AI response format');
