@@ -1,7 +1,8 @@
 import { useNavigate, useLocation, Outlet } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { FileText, FolderOpen, Shield, History, Upload } from "lucide-react";
+import { FileText, FolderOpen, History, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
+import allInsuranceLogo from "@/assets/all-insurance-logo.png";
 
 const Layout = () => {
   const navigate = useNavigate();
@@ -19,9 +20,12 @@ const Layout = () => {
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-card shadow-sm">
         <div className="container flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-2">
-            <Shield className="h-6 w-6 text-primary" />
-            <span className="text-xl font-semibold">InsureCert Portal</span>
+          <div className="flex items-center">
+            <img 
+              src={allInsuranceLogo} 
+              alt="All Insurance LTD." 
+              className="h-10 w-auto"
+            />
           </div>
           
           <nav className="hidden md:flex items-center gap-1">
