@@ -17,9 +17,10 @@ import {
 } from "@/components/ui/dialog";
 import { RequirementSetEditor } from "@/components/RequirementSetEditor";
 
+const TEMP_USER_ID = "00000000-0000-0000-0000-000000000000";
+
 const Requirements = () => {
   const { toast } = useToast();
-  const [userId, setUserId] = useState<string | null>(null);
   const [requirementSets, setRequirementSets] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -28,27 +29,16 @@ const Requirements = () => {
   const [selectedSetId, setSelectedSetId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Get user ID
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUserId(session?.user?.id ?? null);
-    });
+    loadRequirementSets();
   }, []);
 
-  useEffect(() => {
-    if (userId) {
-      loadRequirementSets();
-    }
-  }, [userId]);
-
   const loadRequirementSets = async () => {
-    if (!userId) return;
-    
     setIsLoading(true);
     try {
       const { data, error } = await supabase
         .from("requirement_sets")
         .select("*")
-        .eq("user_id", userId)
+        .eq("user_id", TEMP_USER_ID)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -65,7 +55,7 @@ const Requirements = () => {
   };
 
   const createRequirementSet = async () => {
-    if (!newSetName.trim() || !userId) {
+    if (!newSetName.trim()) {
       toast({
         title: "Validation error",
         description: "Requirement set name is required",
@@ -80,7 +70,7 @@ const Requirements = () => {
         .insert({
           name: newSetName,
           description: newSetDescription || null,
-          user_id: userId,
+          user_id: TEMP_USER_ID,
         })
         .select()
         .single();

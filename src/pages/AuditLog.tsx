@@ -10,46 +10,12 @@ const AuditLog = () => {
   const { toast } = useToast();
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Get user ID
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUserId(session?.user?.id ?? null);
-    });
+    // TODO: Load audit logs when auth is enabled
+    // For now, show empty state
+    setIsLoading(false);
   }, []);
-
-  useEffect(() => {
-    if (!userId) return;
-    
-    loadAuditLogs();
-  }, [userId]);
-
-  const loadAuditLogs = async () => {
-    if (!userId) return;
-    
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from("audit_logs")
-        .select("*")
-        .eq("user_id", userId)
-        .order("timestamp", { ascending: false })
-        .limit(100);
-
-      if (error) throw error;
-      setAuditLogs(data || []);
-    } catch (error: any) {
-      console.error("Error loading audit logs:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load audit logs",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const exportToCSV = () => {
     const headers = ["Timestamp", "Action", "Entity Type", "Entity ID", "Details"];

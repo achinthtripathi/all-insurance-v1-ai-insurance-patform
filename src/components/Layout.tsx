@@ -1,31 +1,12 @@
 import { useNavigate, useLocation, Outlet } from "react-router-dom";
-import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { FileText, FolderOpen, History, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import allInsuranceLogo from "@/assets/all-insurance-logo.png";
-import { supabase } from "@/integrations/supabase/client";
-import { User } from "@supabase/supabase-js";
-import UserMenu from "./UserMenu";
 
 const Layout = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [user, setUser] = useState<User | null>(null);
-
-  useEffect(() => {
-    // Get current user
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-    });
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
 
   const navItems = [
     { path: "/dashboard", label: "Upload", icon: Upload },
@@ -68,7 +49,7 @@ const Layout = () => {
             })}
           </nav>
           
-          {user && <UserMenu user={user} />}
+          <div className="w-10" />
         </div>
       </header>
 

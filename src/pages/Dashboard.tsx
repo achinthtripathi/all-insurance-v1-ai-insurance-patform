@@ -46,9 +46,10 @@ interface CoverageDetail {
   expiryDate: string;
 }
 
+const TEMP_USER_ID = "00000000-0000-0000-0000-000000000000";
+
 const Dashboard = () => {
   const { toast } = useToast();
-  const [userId, setUserId] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
@@ -97,19 +98,10 @@ const Dashboard = () => {
     },
   });
 
-  // Get user ID on mount
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUserId(session?.user?.id ?? null);
-    });
-  }, []);
-
   // Load requirement sets on mount
   useEffect(() => {
-    if (userId) {
-      loadRequirementSets();
-    }
-  }, [userId]);
+    loadRequirementSets();
+  }, []);
 
   // Load rules when requirement set is selected
   useEffect(() => {
@@ -130,13 +122,11 @@ const Dashboard = () => {
   }, [requirementRules, extractedData]);
 
   const loadRequirementSets = async () => {
-    if (!userId) return;
-    
     try {
       const { data, error } = await supabase
         .from("requirement_sets")
         .select("id, name, description")
-        .eq("user_id", userId)
+        .eq("user_id", TEMP_USER_ID)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -201,13 +191,13 @@ const Dashboard = () => {
   };
 
   const handleUpload = async () => {
-    if (!selectedFile || !userId) return;
+    if (!selectedFile) return;
 
     setIsUploading(true);
     try {
       // 1. Upload file to Supabase Storage
       const fileExt = selectedFile.name.split('.').pop();
-      const fileName = `${userId}/${Date.now()}_${selectedFile.name}`;
+      const fileName = `${TEMP_USER_ID}/${Date.now()}_${selectedFile.name}`;
       
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('documents')
@@ -224,7 +214,7 @@ const Dashboard = () => {
       const { data: docData, error: docError } = await supabase
         .from('documents')
         .insert({
-          user_id: userId,
+          user_id: TEMP_USER_ID,
           file_name: selectedFile.name,
           file_type: selectedFile.type,
           file_url: urlData.publicUrl,

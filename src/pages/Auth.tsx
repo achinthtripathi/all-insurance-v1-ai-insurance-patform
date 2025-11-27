@@ -7,8 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
+import { Shield } from "lucide-react";
 import { z } from "zod";
-import allInsuranceLogo from "@/assets/all-insurance-logo.png";
 
 const authSchema = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -123,13 +123,9 @@ const Auth = () => {
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-4">
-            <img 
-              src={allInsuranceLogo} 
-              alt="All Insurance LTD." 
-              className="h-16 w-auto"
-            />
+            <Shield className="h-12 w-12 text-primary" />
           </div>
-          <CardTitle className="text-2xl font-bold">All Insurance LTD.</CardTitle>
+          <CardTitle className="text-2xl font-bold">Insurance Certificate Portal</CardTitle>
           <CardDescription>
             Secure document parsing and compliance management
           </CardDescription>
