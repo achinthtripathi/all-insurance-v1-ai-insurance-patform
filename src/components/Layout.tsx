@@ -43,7 +43,7 @@ const Layout = () => {
             <img 
               src={allInsuranceLogo} 
               alt="All Insurance LTD." 
-              className="h-10 w-auto"
+              className="h-16 w-auto"
             />
           </div>
           
