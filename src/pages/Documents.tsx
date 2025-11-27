@@ -184,67 +184,135 @@ const Documents = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
-          {filteredDocuments.map((doc) => (
-            <Card key={doc.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <FileText className="h-8 w-8 text-primary flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium truncate">{doc.file_name}</h3>
-                      <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {new Date(doc.upload_date).toLocaleDateString()}
-                        </span>
-                        <Badge variant={getStatusColor(doc.status) as any}>
-                          {doc.status}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => window.open(doc.file_url, '_blank')}
-                      className="gap-2"
-                    >
-                      <Eye className="h-4 w-4" />
-                      View
-                    </Button>
+        <div className="overflow-x-auto">
+          <table className="w-full whitespace-nowrap text-sm">
+            <thead>
+              <tr className="border-b bg-muted/50">
+                <th className="px-3 py-2 text-left font-medium">File Name</th>
+                <th className="px-3 py-2 text-left font-medium">Upload Date</th>
+                <th className="px-3 py-2 text-left font-medium">Status</th>
+                <th className="px-3 py-2 text-left font-medium">Named Insured</th>
+                <th className="px-3 py-2 text-left font-medium">Certificate Holder</th>
+                <th className="px-3 py-2 text-left font-medium">Additional Insured</th>
+                <th className="px-3 py-2 text-left font-medium">Cancellation Notice</th>
+                <th className="px-3 py-2 text-left font-medium">Form Type</th>
+                {/* General Liability */}
+                <th className="px-3 py-2 text-left font-medium">GL Company</th>
+                <th className="px-3 py-2 text-left font-medium">GL Policy #</th>
+                <th className="px-3 py-2 text-left font-medium">GL Limit</th>
+                <th className="px-3 py-2 text-left font-medium">GL Currency</th>
+                <th className="px-3 py-2 text-left font-medium">GL Deductible</th>
+                <th className="px-3 py-2 text-left font-medium">GL Effective</th>
+                <th className="px-3 py-2 text-left font-medium">GL Expiry</th>
+                {/* Auto Liability */}
+                <th className="px-3 py-2 text-left font-medium">Auto Company</th>
+                <th className="px-3 py-2 text-left font-medium">Auto Policy #</th>
+                <th className="px-3 py-2 text-left font-medium">Auto Limit</th>
+                <th className="px-3 py-2 text-left font-medium">Auto Currency</th>
+                <th className="px-3 py-2 text-left font-medium">Auto Deductible</th>
+                <th className="px-3 py-2 text-left font-medium">Auto Effective</th>
+                <th className="px-3 py-2 text-left font-medium">Auto Expiry</th>
+                {/* Trailer Liability */}
+                <th className="px-3 py-2 text-left font-medium">Trailer Company</th>
+                <th className="px-3 py-2 text-left font-medium">Trailer Policy #</th>
+                <th className="px-3 py-2 text-left font-medium">Trailer Limit</th>
+                <th className="px-3 py-2 text-left font-medium">Trailer Currency</th>
+                <th className="px-3 py-2 text-left font-medium">Trailer Deductible</th>
+                <th className="px-3 py-2 text-left font-medium">Trailer Effective</th>
+                <th className="px-3 py-2 text-left font-medium">Trailer Expiry</th>
+                <th className="px-3 py-2 text-left font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredDocuments.map((doc) => {
+                const extracted = doc.extracted_data?.[0];
+                const coverages = extracted?.coverages || {};
+                const gl = coverages.generalLiability || {};
+                const auto = coverages.automobileLiability || {};
+                const trailer = coverages.nonOwnedTrailer || {};
 
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm">
-                          Actions
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => setEditingDocument(doc)}>
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDuplicate(doc)}>
-                          <Copy className="mr-2 h-4 w-4" />
-                          Duplicate
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => setDeletingDocument({ id: doc.id, name: doc.file_name, url: doc.file_url })}
-                          className="text-destructive"
+                return (
+                  <tr key={doc.id} className="border-b hover:bg-muted/40">
+                    <td className="px-3 py-2 max-w-xs truncate">{doc.file_name}</td>
+                    <td className="px-3 py-2">
+                      {doc.upload_date ? new Date(doc.upload_date).toLocaleDateString() : "-"}
+                    </td>
+                    <td className="px-3 py-2">
+                      <Badge variant={getStatusColor(doc.status) as any}>{doc.status}</Badge>
+                    </td>
+                    <td className="px-3 py-2 max-w-xs truncate">{extracted?.named_insured || "-"}</td>
+                    <td className="px-3 py-2 max-w-xs truncate">{extracted?.certificate_holder || "-"}</td>
+                    <td className="px-3 py-2 max-w-xs truncate">{extracted?.additional_insured || "-"}</td>
+                    <td className="px-3 py-2 max-w-xs truncate">{extracted?.cancellation_notice_period || "-"}</td>
+                    <td className="px-3 py-2 max-w-xs truncate">{extracted?.form_type || "-"}</td>
+                    {/* GL */}
+                    <td className="px-3 py-2 max-w-xs truncate">{gl.insuranceCompany || "-"}</td>
+                    <td className="px-3 py-2 max-w-xs truncate">{gl.policyNumber || "-"}</td>
+                    <td className="px-3 py-2 max-w-xs truncate">{gl.coverageLimit || "-"}</td>
+                    <td className="px-3 py-2 max-w-xs truncate">{gl.currency || "-"}</td>
+                    <td className="px-3 py-2 max-w-xs truncate">{gl.deductible || "-"}</td>
+                    <td className="px-3 py-2 max-w-xs truncate">{gl.effectiveDate || "-"}</td>
+                    <td className="px-3 py-2 max-w-xs truncate">{gl.expiryDate || "-"}</td>
+                    {/* Auto */}
+                    <td className="px-3 py-2 max-w-xs truncate">{auto.insuranceCompany || "-"}</td>
+                    <td className="px-3 py-2 max-w-xs truncate">{auto.policyNumber || "-"}</td>
+                    <td className="px-3 py-2 max-w-xs truncate">{auto.coverageLimit || "-"}</td>
+                    <td className="px-3 py-2 max-w-xs truncate">{auto.currency || "-"}</td>
+                    <td className="px-3 py-2 max-w-xs truncate">{auto.deductible || "-"}</td>
+                    <td className="px-3 py-2 max-w-xs truncate">{auto.effectiveDate || "-"}</td>
+                    <td className="px-3 py-2 max-w-xs truncate">{auto.expiryDate || "-"}</td>
+                    {/* Trailer */}
+                    <td className="px-3 py-2 max-w-xs truncate">{trailer.insuranceCompany || "-"}</td>
+                    <td className="px-3 py-2 max-w-xs truncate">{trailer.policyNumber || "-"}</td>
+                    <td className="px-3 py-2 max-w-xs truncate">{trailer.coverageLimit || "-"}</td>
+                    <td className="px-3 py-2 max-w-xs truncate">{trailer.currency || "-"}</td>
+                    <td className="px-3 py-2 max-w-xs truncate">{trailer.deductible || "-"}</td>
+                    <td className="px-3 py-2 max-w-xs truncate">{trailer.effectiveDate || "-"}</td>
+                    <td className="px-3 py-2 max-w-xs truncate">{trailer.expiryDate || "-"}</td>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open(doc.file_url, "_blank")}
+                          className="gap-2"
                         >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                          <Eye className="h-4 w-4" />
+                          View
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm">
+                              Actions
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setEditingDocument(doc)}>
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDuplicate(doc)}>
+                              <Copy className="mr-2 h-4 w-4" />
+                              Duplicate
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() =>
+                                setDeletingDocument({ id: doc.id, name: doc.file_name, url: doc.file_url })
+                              }
+                              className="text-destructive"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 
