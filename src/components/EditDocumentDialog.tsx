@@ -10,10 +10,9 @@ import { Loader2 } from "lucide-react";
 interface Coverage {
   insuranceCompany: string;
   policyNumber: string;
-  limits: string;
-  limitsCurrency: string;
+  coverageLimit: string;
+  currency: string;
   deductible: string;
-  deductibleCurrency: string;
   effectiveDate: string;
   expiryDate: string;
 }
@@ -52,12 +51,22 @@ interface EditDocumentDialogProps {
 export const EditDocumentDialog = ({ document, open, onOpenChange, onSaved }: EditDocumentDialogProps) => {
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
-  
+
   const extractedData = document.extracted_data[0];
+  const defaultCoverage: Coverage = {
+    insuranceCompany: "",
+    policyNumber: "",
+    coverageLimit: "",
+    currency: "CAD",
+    deductible: "",
+    effectiveDate: "",
+    expiryDate: "",
+  };
+
   const coverages = extractedData?.coverages || {
-    generalLiability: { insuranceCompany: "", policyNumber: "", limits: "", limitsCurrency: "USD", deductible: "", deductibleCurrency: "USD", effectiveDate: "", expiryDate: "" },
-    automobileLiability: { insuranceCompany: "", policyNumber: "", limits: "", limitsCurrency: "USD", deductible: "", deductibleCurrency: "USD", effectiveDate: "", expiryDate: "" },
-    nonOwnedTrailer: { insuranceCompany: "", policyNumber: "", limits: "", limitsCurrency: "USD", deductible: "", deductibleCurrency: "USD", effectiveDate: "", expiryDate: "" },
+    generalLiability: { ...defaultCoverage },
+    automobileLiability: { ...defaultCoverage },
+    nonOwnedTrailer: { ...defaultCoverage },
   };
 
   const [formData, setFormData] = useState({
@@ -67,24 +76,22 @@ export const EditDocumentDialog = ({ document, open, onOpenChange, onSaved }: Ed
     additional_insured: extractedData?.additional_insured || "",
     cancellation_notice_period: extractedData?.cancellation_notice_period || "",
     form_type: extractedData?.form_type || "",
-    coverages: coverages,
+    coverages,
   });
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Update document metadata
       const { error: docError } = await supabase
-        .from('documents')
+        .from("documents")
         .update({ file_name: formData.file_name })
-        .eq('id', document.id);
+        .eq("id", document.id);
 
       if (docError) throw docError;
 
-      // Update extracted data
       if (extractedData) {
         const { error: extractError } = await supabase
-          .from('extracted_data')
+          .from("extracted_data")
           .update({
             named_insured: formData.named_insured,
             certificate_holder: formData.certificate_holder,
@@ -93,7 +100,7 @@ export const EditDocumentDialog = ({ document, open, onOpenChange, onSaved }: Ed
             form_type: formData.form_type,
             coverages: formData.coverages as any,
           })
-          .eq('id', extractedData.id);
+          .eq("id", extractedData.id);
 
         if (extractError) throw extractError;
       }
@@ -117,6 +124,12 @@ export const EditDocumentDialog = ({ document, open, onOpenChange, onSaved }: Ed
     }
   };
 
+  const coverageSections: { key: keyof typeof coverages; label: string }[] = [
+    { key: "generalLiability", label: "Commercial General Liability" },
+    { key: "automobileLiability", label: "Automobile Liability" },
+    { key: "nonOwnedTrailer", label: "Non-Owned Trailer Liability" },
+  ];
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -138,7 +151,7 @@ export const EditDocumentDialog = ({ document, open, onOpenChange, onSaved }: Ed
           {/* General Information */}
           <div className="space-y-4">
             <h3 className="font-semibold text-lg">General Information</h3>
-            
+
             <div className="space-y-2">
               <Label htmlFor="named_insured">Named Insured</Label>
               <Input
@@ -171,7 +184,9 @@ export const EditDocumentDialog = ({ document, open, onOpenChange, onSaved }: Ed
               <Input
                 id="cancellation_notice"
                 value={formData.cancellation_notice_period}
-                onChange={(e) => setFormData({ ...formData, cancellation_notice_period: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, cancellation_notice_period: e.target.value })
+                }
               />
             </div>
 
@@ -186,68 +201,103 @@ export const EditDocumentDialog = ({ document, open, onOpenChange, onSaved }: Ed
           </div>
 
           {/* Coverage Sections */}
-          {(['generalLiability', 'automobileLiability', 'nonOwnedTrailer'] as const).map((coverageType) => (
-            <div key={coverageType} className="space-y-4 border-t pt-4">
-              <h3 className="font-semibold text-lg">
-                {coverageType === 'generalLiability' ? 'Commercial General Liability' :
-                 coverageType === 'automobileLiability' ? 'Automobile Liability' :
-                 'Non-Owned Trailer Liability'}
-              </h3>
+          {coverageSections.map(({ key, label }) => (
+            <div key={key} className="space-y-4 border-t pt-4">
+              <h3 className="font-semibold text-lg">{label}</h3>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Insurance Company</Label>
                   <Input
-                    value={formData.coverages[coverageType].insuranceCompany}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      coverages: {
-                        ...formData.coverages,
-                        [coverageType]: { ...formData.coverages[coverageType], insuranceCompany: e.target.value }
-                      }
-                    })}
+                    value={formData.coverages[key].insuranceCompany}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        coverages: {
+                          ...formData.coverages,
+                          [key]: {
+                            ...formData.coverages[key],
+                            insuranceCompany: e.target.value,
+                          },
+                        },
+                      })
+                    }
                   />
                 </div>
 
                 <div className="space-y-2">
                   <Label>Policy Number</Label>
                   <Input
-                    value={formData.coverages[coverageType].policyNumber}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      coverages: {
-                        ...formData.coverages,
-                        [coverageType]: { ...formData.coverages[coverageType], policyNumber: e.target.value }
-                      }
-                    })}
+                    value={formData.coverages[key].policyNumber}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        coverages: {
+                          ...formData.coverages,
+                          [key]: {
+                            ...formData.coverages[key],
+                            policyNumber: e.target.value,
+                          },
+                        },
+                      })
+                    }
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Coverage Limits</Label>
+                  <Label>Coverage Limit</Label>
                   <Input
-                    value={formData.coverages[coverageType].limits}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      coverages: {
-                        ...formData.coverages,
-                        [coverageType]: { ...formData.coverages[coverageType], limits: e.target.value }
-                      }
-                    })}
+                    value={formData.coverages[key].coverageLimit}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        coverages: {
+                          ...formData.coverages,
+                          [key]: {
+                            ...formData.coverages[key],
+                            coverageLimit: e.target.value,
+                          },
+                        },
+                      })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Currency</Label>
+                  <Input
+                    value={formData.coverages[key].currency}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        coverages: {
+                          ...formData.coverages,
+                          [key]: {
+                            ...formData.coverages[key],
+                            currency: e.target.value,
+                          },
+                        },
+                      })
+                    }
                   />
                 </div>
 
                 <div className="space-y-2">
                   <Label>Deductible</Label>
                   <Input
-                    value={formData.coverages[coverageType].deductible}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      coverages: {
-                        ...formData.coverages,
-                        [coverageType]: { ...formData.coverages[coverageType], deductible: e.target.value }
-                      }
-                    })}
+                    value={formData.coverages[key].deductible}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        coverages: {
+                          ...formData.coverages,
+                          [key]: {
+                            ...formData.coverages[key],
+                            deductible: e.target.value,
+                          },
+                        },
+                      })
+                    }
                   />
                 </div>
 
@@ -255,14 +305,19 @@ export const EditDocumentDialog = ({ document, open, onOpenChange, onSaved }: Ed
                   <Label>Effective Date</Label>
                   <Input
                     type="date"
-                    value={formData.coverages[coverageType].effectiveDate}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      coverages: {
-                        ...formData.coverages,
-                        [coverageType]: { ...formData.coverages[coverageType], effectiveDate: e.target.value }
-                      }
-                    })}
+                    value={formData.coverages[key].effectiveDate}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        coverages: {
+                          ...formData.coverages,
+                          [key]: {
+                            ...formData.coverages[key],
+                            effectiveDate: e.target.value,
+                          },
+                        },
+                      })
+                    }
                   />
                 </div>
 
@@ -270,14 +325,19 @@ export const EditDocumentDialog = ({ document, open, onOpenChange, onSaved }: Ed
                   <Label>Expiry Date</Label>
                   <Input
                     type="date"
-                    value={formData.coverages[coverageType].expiryDate}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      coverages: {
-                        ...formData.coverages,
-                        [coverageType]: { ...formData.coverages[coverageType], expiryDate: e.target.value }
-                      }
-                    })}
+                    value={formData.coverages[key].expiryDate}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        coverages: {
+                          ...formData.coverages,
+                          [key]: {
+                            ...formData.coverages[key],
+                            expiryDate: e.target.value,
+                          },
+                        },
+                      })
+                    }
                   />
                 </div>
               </div>
