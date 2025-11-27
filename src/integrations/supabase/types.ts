@@ -298,6 +298,7 @@ export type Database = {
         | "less_than_or_equal"
         | "contains"
         | "not_contains"
+        | "within_days"
       logical_operator: "and" | "or" | "not"
     }
     CompositeTypes: {
@@ -436,6 +437,7 @@ export const Constants = {
         "less_than_or_equal",
         "contains",
         "not_contains",
+        "within_days",
       ],
       logical_operator: ["and", "or", "not"],
     },
