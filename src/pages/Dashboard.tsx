@@ -195,16 +195,43 @@ const Dashboard = () => {
 
     setIsUploading(true);
     try {
-      // Create a local URL for the uploaded file (development mode)
-      const fileUrl = URL.createObjectURL(selectedFile);
+      // 1. Upload file to Supabase Storage
+      const fileExt = selectedFile.name.split('.').pop();
+      const fileName = `${TEMP_USER_ID}/${Date.now()}_${selectedFile.name}`;
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('documents')
+        .upload(fileName, selectedFile);
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('documents')
+        .getPublicUrl(fileName);
+
+      // 2. Insert document record to database
+      const { data: docData, error: docError } = await supabase
+        .from('documents')
+        .insert({
+          user_id: TEMP_USER_ID,
+          file_name: selectedFile.name,
+          file_type: selectedFile.type,
+          file_url: urlData.publicUrl,
+          status: 'processing',
+        })
+        .select()
+        .single();
+
+      if (docError) throw docError;
       
       const newDocument: UploadedDocument = {
-        id: Date.now().toString(),
+        id: docData.id,
         fileName: selectedFile.name,
         fileType: selectedFile.type,
         uploadDate: new Date(),
         status: "processing",
-        fileUrl: fileUrl,
+        fileUrl: urlData.publicUrl,
       };
       
       // Add to documents list
@@ -225,20 +252,9 @@ const Dashboard = () => {
         description: "Extracting certificate data...",
       });
       
-      setTimeout(() => {
-        setIsProcessing(false);
-        
-        // Update document status to completed
-        setUploadedDocuments(prev => 
-          prev.map(doc => 
-            doc.id === newDocument.id 
-              ? { ...doc, status: "completed" }
-              : doc
-          )
-        );
-        
+      setTimeout(async () => {
         // Simulate extracted data
-        setExtractedData({
+        const simulatedData: ExtractedData = {
           namedInsured: "ABC Company Inc.",
           certificateHolder: "XYZ Corporation",
           additionalInsured: "XYZ Corp and subsidiaries",
@@ -273,15 +289,65 @@ const Dashboard = () => {
               expiryDate: "2025-01-01",
             },
           },
-        });
+        };
+
+        setExtractedData(simulatedData);
+
+        // 3. Save extracted data to database
+        const { error: extractError } = await supabase
+          .from('extracted_data')
+          .insert({
+            document_id: docData.id,
+            named_insured: simulatedData.namedInsured,
+            certificate_holder: simulatedData.certificateHolder,
+            additional_insured: simulatedData.additionalInsured,
+            cancellation_notice_period: simulatedData.cancellationNotice,
+            form_type: simulatedData.formType,
+            coverages: {
+              generalLiability: simulatedData.coverages.generalLiability,
+              automobileLiability: simulatedData.coverages.autoLiability,
+              nonOwnedTrailer: simulatedData.coverages.trailerLiability,
+            } as any,
+          });
+
+        if (extractError) {
+          console.error("Error saving extracted data:", extractError);
+          toast({
+            title: "Warning",
+            description: "Document uploaded but extraction data failed to save",
+            variant: "destructive",
+          });
+        }
+
+        // 4. Update document status to completed
+        const { error: updateError } = await supabase
+          .from('documents')
+          .update({ status: 'completed' })
+          .eq('id', docData.id);
+
+        if (updateError) {
+          console.error("Error updating document status:", updateError);
+        }
+
+        setIsProcessing(false);
+        
+        // Update document status to completed
+        setUploadedDocuments(prev => 
+          prev.map(doc => 
+            doc.id === newDocument.id 
+              ? { ...doc, status: "completed" }
+              : doc
+          )
+        );
         
         toast({
           title: "Processing complete",
-          description: "Certificate data extracted successfully",
+          description: "Certificate data extracted and saved to database",
         });
       }, 3000);
       
     } catch (error: any) {
+      console.error("Upload error:", error);
       toast({
         title: "Upload failed",
         description: error.message,

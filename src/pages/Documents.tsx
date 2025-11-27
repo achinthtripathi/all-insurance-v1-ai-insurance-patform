@@ -2,22 +2,131 @@ import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, FileText, Calendar, Eye } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { Search, FileText, Calendar, Eye, Pencil, Trash2, Copy } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
+import { EditDocumentDialog } from "@/components/EditDocumentDialog";
+import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+const TEMP_USER_ID = "00000000-0000-0000-0000-000000000000";
 
 const Documents = () => {
   const { toast } = useToast();
   const [documents, setDocuments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [editingDocument, setEditingDocument] = useState<any>(null);
+  const [deletingDocument, setDeletingDocument] = useState<{ id: string; name: string; url: string } | null>(null);
+
+  const loadDocuments = async () => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('documents')
+        .select(`
+          *,
+          extracted_data (*)
+        `)
+        .eq('user_id', TEMP_USER_ID)
+        .order('upload_date', { ascending: false });
+
+      if (error) throw error;
+
+      setDocuments(data || []);
+    } catch (error) {
+      console.error("Error loading documents:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load documents",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // TODO: Load documents when auth is enabled
-    // For now, show empty state
-    setIsLoading(false);
+    loadDocuments();
+
+    // Set up realtime subscription
+    const channel = supabase
+      .channel('documents-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'documents',
+          filter: `user_id=eq.${TEMP_USER_ID}`,
+        },
+        () => {
+          loadDocuments();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
+
+  const handleDuplicate = async (doc: any) => {
+    try {
+      // Duplicate document record
+      const { data: newDoc, error: docError } = await supabase
+        .from('documents')
+        .insert({
+          user_id: TEMP_USER_ID,
+          file_name: `${doc.file_name} (Copy)`,
+          file_type: doc.file_type,
+          file_url: doc.file_url,
+          status: doc.status,
+        })
+        .select()
+        .single();
+
+      if (docError) throw docError;
+
+      // Duplicate extracted data if exists
+      if (doc.extracted_data && doc.extracted_data.length > 0) {
+        const extractedData = doc.extracted_data[0];
+        const { error: extractError } = await supabase
+          .from('extracted_data')
+          .insert({
+            document_id: newDoc.id,
+            named_insured: extractedData.named_insured,
+            certificate_holder: extractedData.certificate_holder,
+            additional_insured: extractedData.additional_insured,
+            cancellation_notice_period: extractedData.cancellation_notice_period,
+            form_type: extractedData.form_type,
+            coverages: extractedData.coverages,
+          });
+
+        if (extractError) throw extractError;
+      }
+
+      toast({
+        title: "Success",
+        description: "Document duplicated successfully",
+      });
+
+      loadDocuments();
+    } catch (error) {
+      console.error("Error duplicating document:", error);
+      toast({
+        title: "Error",
+        description: "Failed to duplicate document",
+        variant: "destructive",
+      });
+    }
+  };
 
   const filteredDocuments = documents.filter((doc) =>
     doc.file_name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -25,14 +134,15 @@ const Documents = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case "completed":
       case "uploaded":
-        return "success";
+        return "default";
       case "processing":
-        return "warning";
+        return "secondary";
       case "pending":
-        return "secondary";
+        return "outline";
       default:
-        return "secondary";
+        return "outline";
     }
   };
 
@@ -94,15 +204,70 @@ const Documents = () => {
                       </div>
                     </div>
                   </div>
-                  <Button variant="outline" size="sm" className="gap-2 flex-shrink-0">
-                    <Eye className="h-4 w-4" />
-                    View
-                  </Button>
+                  
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(doc.file_url, '_blank')}
+                      className="gap-2"
+                    >
+                      <Eye className="h-4 w-4" />
+                      View
+                    </Button>
+
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          Actions
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setEditingDocument(doc)}>
+                          <Pencil className="mr-2 h-4 w-4" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDuplicate(doc)}>
+                          <Copy className="mr-2 h-4 w-4" />
+                          Duplicate
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => setDeletingDocument({ id: doc.id, name: doc.file_name, url: doc.file_url })}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
+      )}
+
+      {/* Edit Dialog */}
+      {editingDocument && (
+        <EditDocumentDialog
+          document={editingDocument}
+          open={!!editingDocument}
+          onOpenChange={(open) => !open && setEditingDocument(null)}
+          onSaved={loadDocuments}
+        />
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {deletingDocument && (
+        <DeleteConfirmDialog
+          documentId={deletingDocument.id}
+          documentName={deletingDocument.name}
+          fileUrl={deletingDocument.url}
+          open={!!deletingDocument}
+          onOpenChange={(open) => !open && setDeletingDocument(null)}
+          onDeleted={loadDocuments}
+        />
       )}
     </div>
   );
