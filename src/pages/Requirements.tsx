@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Edit2, Trash2, Save } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
   DialogContent,
@@ -14,48 +15,22 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { RequirementRuleRow } from "@/components/RequirementRuleRow";
-import { RequirementSet, FieldRule, CERTIFICATE_FIELDS } from "@/types/requirements";
 
 const Requirements = () => {
   const { toast } = useToast();
-  const [requirementSets, setRequirementSets] = useState<RequirementSet[]>([]);
+  const [requirementSets, setRequirementSets] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newSetName, setNewSetName] = useState("");
   const [newSetDescription, setNewSetDescription] = useState("");
-  const [editingRules, setEditingRules] = useState<FieldRule[]>([]);
 
   useEffect(() => {
-    // Load requirement sets from localStorage
-    const stored = localStorage.getItem("requirementSets");
-    if (stored) {
-      setRequirementSets(JSON.parse(stored));
-    }
+    // TODO: Load requirement sets when auth is enabled
+    // For now, show empty state
     setIsLoading(false);
   }, []);
 
-  const initializeRules = () => {
-    return CERTIFICATE_FIELDS.map(field => ({
-      fieldName: field.name,
-      fieldLabel: field.label,
-      expectedValue: "",
-      comparisonOperator: "equals" as const,
-      logicalOperator: "and" as const,
-      enabled: false,
-    }));
-  };
-
-  const openCreateDialog = () => {
-    setEditingRules(initializeRules());
-    setNewSetName("");
-    setNewSetDescription("");
-    setIsDialogOpen(true);
-  };
-
-  const createRequirementSet = () => {
+  const createRequirementSet = async () => {
     if (!newSetName.trim()) {
       toast({
         title: "Validation error",
@@ -65,31 +40,10 @@ const Requirements = () => {
       return;
     }
 
-    const enabledRules = editingRules.filter(rule => rule.enabled);
-    if (enabledRules.length === 0) {
-      toast({
-        title: "Validation error",
-        description: "Please enable and configure at least one field rule",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const newSet: RequirementSet = {
-      id: crypto.randomUUID(),
-      name: newSetName,
-      description: newSetDescription,
-      rules: editingRules,
-      createdAt: new Date().toISOString(),
-    };
-
-    const updatedSets = [...requirementSets, newSet];
-    setRequirementSets(updatedSets);
-    localStorage.setItem("requirementSets", JSON.stringify(updatedSets));
-
+    // TODO: Implement with authentication later
     toast({
-      title: "Success",
-      description: `Requirement set "${newSetName}" created with ${enabledRules.length} rules`,
+      title: "Info",
+      description: "Authentication required to save data (disabled for development)",
     });
     
     setNewSetName("");
@@ -97,30 +51,13 @@ const Requirements = () => {
     setIsDialogOpen(false);
   };
 
-  const updateRule = (index: number, updatedRule: FieldRule) => {
-    const newRules = [...editingRules];
-    newRules[index] = updatedRule;
-    setEditingRules(newRules);
-  };
-
-  const deleteRequirementSet = (id: string, name: string) => {
-    const updatedSets = requirementSets.filter(set => set.id !== id);
-    setRequirementSets(updatedSets);
-    localStorage.setItem("requirementSets", JSON.stringify(updatedSets));
-    
+  const deleteRequirementSet = async (id: string, name: string) => {
+    // TODO: Implement with authentication later
     toast({
-      title: "Deleted",
-      description: `Requirement set "${name}" has been deleted`,
+      title: "Info",
+      description: "Authentication required to delete data (disabled for development)",
     });
   };
-
-  const groupedFields = CERTIFICATE_FIELDS.reduce((acc, field) => {
-    if (!acc[field.category]) {
-      acc[field.category] = [];
-    }
-    acc[field.category].push(field);
-    return acc;
-  }, {} as Record<string, typeof CERTIFICATE_FIELDS>);
 
   return (
     <div className="space-y-6">
@@ -134,19 +71,18 @@ const Requirements = () => {
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-2" onClick={openCreateDialog}>
+            <Button className="gap-2">
               <Plus className="h-4 w-4" />
               New Requirement Set
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-5xl max-h-[90vh]">
+          <DialogContent>
             <DialogHeader>
               <DialogTitle>Create Requirement Set</DialogTitle>
               <DialogDescription>
-                Define validation rules for certificate fields. Enable fields you want to validate.
+                Define a new set of insurance requirements for certificate validation
               </DialogDescription>
             </DialogHeader>
-            
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="set-name">Name</Label>
@@ -164,48 +100,8 @@ const Requirements = () => {
                   placeholder="Describe this requirement set..."
                   value={newSetDescription}
                   onChange={(e) => setNewSetDescription(e.target.value)}
-                  rows={2}
                 />
               </div>
-
-              <Separator />
-
-              <ScrollArea className="h-[50vh] pr-4">
-                <div className="space-y-6">
-                  <div className="grid grid-cols-12 gap-3 text-xs font-medium text-muted-foreground mb-2">
-                    <div className="col-span-1">Enable</div>
-                    <div className="col-span-3">Field</div>
-                    <div className="col-span-2">Comparison</div>
-                    <div className="col-span-3">Expected Value</div>
-                    <div className="col-span-3">Logic (with next)</div>
-                  </div>
-
-                  {Object.entries(groupedFields).map(([category, fields]) => (
-                    <div key={category}>
-                      <h3 className="text-sm font-semibold mb-3 text-foreground">{category}</h3>
-                      <div className="space-y-3">
-                        {fields.map((field, idx) => {
-                          const ruleIndex = editingRules.findIndex(r => r.fieldName === field.name);
-                          const isLastInCategory = idx === fields.length - 1;
-                          const isLastOverall = category === Object.keys(groupedFields)[Object.keys(groupedFields).length - 1] && isLastInCategory;
-                          
-                          return (
-                            <RequirementRuleRow
-                              key={field.name}
-                              rule={editingRules[ruleIndex]}
-                              onChange={(updated) => updateRule(ruleIndex, updated)}
-                              showLogicalOperator={!isLastOverall}
-                            />
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-
-              <Separator />
-
               <Button onClick={createRequirementSet} className="w-full gap-2">
                 <Save className="h-4 w-4" />
                 Create Requirement Set
@@ -227,7 +123,7 @@ const Requirements = () => {
             <p className="text-muted-foreground mb-4">
               No requirement sets yet. Create your first one to get started.
             </p>
-            <Button onClick={openCreateDialog} className="gap-2">
+            <Button onClick={() => setIsDialogOpen(true)} className="gap-2">
               <Plus className="h-4 w-4" />
               Create First Requirement Set
             </Button>
@@ -259,13 +155,8 @@ const Requirements = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  <div className="text-sm text-muted-foreground">
-                    {set.rules.filter((r: FieldRule) => r.enabled).length} active rules
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Created {new Date(set.createdAt).toLocaleDateString()}
-                  </div>
+                <div className="text-sm text-muted-foreground">
+                  Created {new Date(set.created_at).toLocaleDateString()}
                 </div>
               </CardContent>
             </Card>
