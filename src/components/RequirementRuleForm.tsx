@@ -14,10 +14,16 @@ import {
   CERTIFICATE_FIELDS,
   COMPARISON_OPERATORS,
   LOGICAL_OPERATORS,
+  DATE_FIELDS,
   CertificateFieldKey,
   ComparisonOperator,
   LogicalOperator,
 } from "@/lib/certificateFields";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface RequirementRule {
   id?: string;
@@ -46,6 +52,9 @@ export const RequirementRuleForm = ({
   const [logicalOperator, setLogicalOperator] = useState<LogicalOperator>(
     existingRule?.logical_operator || "and"
   );
+
+  const isDateField = DATE_FIELDS.has(fieldName);
+  const isWithinDaysOperator = comparisonOperator === "within_days";
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,14 +117,44 @@ export const RequirementRuleForm = ({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="expected-value">Expected Value</Label>
-          <Input
-            id="expected-value"
-            placeholder="Enter expected value..."
-            value={expectedValue}
-            onChange={(e) => setExpectedValue(e.target.value)}
-            className="bg-background"
-          />
+          <Label htmlFor="expected-value">
+            {isWithinDaysOperator ? "Number of Days" : "Expected Value"}
+          </Label>
+          {isDateField && !isWithinDaysOperator ? (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal bg-background",
+                    !expectedValue && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {expectedValue ? format(new Date(expectedValue), "PPP") : "Pick a date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={expectedValue ? new Date(expectedValue) : undefined}
+                  onSelect={(date) => setExpectedValue(date ? date.toISOString() : "")}
+                  initialFocus
+                  className="pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+          ) : (
+            <Input
+              id="expected-value"
+              type={isWithinDaysOperator ? "number" : "text"}
+              placeholder={isWithinDaysOperator ? "Enter number of days (e.g., 30)" : "Enter expected value..."}
+              value={expectedValue}
+              onChange={(e) => setExpectedValue(e.target.value)}
+              className="bg-background"
+              min={isWithinDaysOperator ? "1" : undefined}
+            />
+          )}
         </div>
 
         <div className="space-y-2">

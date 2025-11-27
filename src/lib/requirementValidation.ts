@@ -21,6 +21,27 @@ export const validateField = (
     return "missing";
   }
 
+  // Handle "within_days" operator for date fields
+  if (operator === "within_days") {
+    try {
+      const fieldDate = new Date(fieldValue);
+      const daysThreshold = parseInt(expectedValue, 10);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const futureDate = new Date(today);
+      futureDate.setDate(today.getDate() + daysThreshold);
+      
+      // Check if field date is between today and future date (inclusive)
+      if (fieldDate >= today && fieldDate <= futureDate) {
+        return "pass";
+      }
+      return "fail";
+    } catch {
+      return "fail";
+    }
+  }
+
   const normalizedFieldValue = fieldValue.trim().toLowerCase();
   const normalizedExpectedValue = expectedValue.trim().toLowerCase();
 
