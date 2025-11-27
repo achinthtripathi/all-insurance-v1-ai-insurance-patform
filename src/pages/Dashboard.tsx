@@ -421,36 +421,6 @@ const Dashboard = () => {
         </p>
       </div>
 
-      {/* Requirement Set Selection */}
-      {requirementSets.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Requirement Set</CardTitle>
-            <CardDescription>
-              Select a requirement set to validate extracted data against defined rules
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Select value={selectedRequirementSetId} onValueChange={setSelectedRequirementSetId}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a requirement set..." />
-              </SelectTrigger>
-              <SelectContent>
-                {requirementSets.map((set) => (
-                  <SelectItem key={set.id} value={set.id}>
-                    {set.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {selectedRequirementSetId && requirementRules.length > 0 && (
-              <p className="text-sm text-muted-foreground mt-2">
-                {requirementRules.length} validation rule{requirementRules.length !== 1 ? "s" : ""} active
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Upload & Preview Card */}
@@ -583,6 +553,30 @@ const Dashboard = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            {/* Requirement Set Selection */}
+            <div className="space-y-2">
+              <Label htmlFor="requirementSet">Requirement Set</Label>
+              <Select value={selectedRequirementSetId} onValueChange={setSelectedRequirementSetId}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a requirement set..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {requirementSets.map((set) => (
+                    <SelectItem key={set.id} value={set.id}>
+                      {set.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedRequirementSetId && requirementRules.length > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  {requirementRules.length} validation rule{requirementRules.length !== 1 ? "s" : ""} active
+                </p>
+              )}
+            </div>
+
+            <Separator />
+
             {/* General Information Section */}
             <div className="space-y-4">
               <h4 className="font-semibold text-sm">General Information</h4>
