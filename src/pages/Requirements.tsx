@@ -17,8 +17,6 @@ import {
 } from "@/components/ui/dialog";
 import { RequirementSetEditor } from "@/components/RequirementSetEditor";
 
-const TEMP_USER_ID = "00000000-0000-0000-0000-000000000000";
-
 const Requirements = () => {
   const { toast } = useToast();
   const [requirementSets, setRequirementSets] = useState<any[]>([]);
@@ -27,18 +25,33 @@ const Requirements = () => {
   const [newSetName, setNewSetName] = useState("");
   const [newSetDescription, setNewSetDescription] = useState("");
   const [selectedSetId, setSelectedSetId] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    loadRequirementSets();
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+      }
+    };
+    getUser();
   }, []);
 
+  useEffect(() => {
+    if (userId) {
+      loadRequirementSets();
+    }
+  }, [userId]);
+
   const loadRequirementSets = async () => {
+    if (!userId) return;
+    
     setIsLoading(true);
     try {
       const { data, error } = await supabase
         .from("requirement_sets")
         .select("*")
-        .eq("user_id", TEMP_USER_ID)
+        .eq("user_id", userId)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -64,13 +77,22 @@ const Requirements = () => {
       return;
     }
 
+    if (!userId) {
+      toast({
+        title: "Error",
+        description: "User not authenticated",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from("requirement_sets")
         .insert({
           name: newSetName,
           description: newSetDescription || null,
-          user_id: TEMP_USER_ID,
+          user_id: userId,
         })
         .select()
         .single();
