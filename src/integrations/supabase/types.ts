@@ -193,30 +193,54 @@ export type Database = {
       }
       requirements: {
         Row: {
+          comparison_operator:
+            | Database["public"]["Enums"]["comparison_operator"]
+            | null
           coverage_type: string
           created_at: string | null
+          expected_value: string | null
+          field_name: string | null
           id: string
           limit_currency: string | null
+          logical_operator:
+            | Database["public"]["Enums"]["logical_operator"]
+            | null
           minimum_limit: number | null
           notes: string | null
           required_endorsements: string[] | null
           requirement_set_id: string
         }
         Insert: {
+          comparison_operator?:
+            | Database["public"]["Enums"]["comparison_operator"]
+            | null
           coverage_type: string
           created_at?: string | null
+          expected_value?: string | null
+          field_name?: string | null
           id?: string
           limit_currency?: string | null
+          logical_operator?:
+            | Database["public"]["Enums"]["logical_operator"]
+            | null
           minimum_limit?: number | null
           notes?: string | null
           required_endorsements?: string[] | null
           requirement_set_id: string
         }
         Update: {
+          comparison_operator?:
+            | Database["public"]["Enums"]["comparison_operator"]
+            | null
           coverage_type?: string
           created_at?: string | null
+          expected_value?: string | null
+          field_name?: string | null
           id?: string
           limit_currency?: string | null
+          logical_operator?:
+            | Database["public"]["Enums"]["logical_operator"]
+            | null
           minimum_limit?: number | null
           notes?: string | null
           required_endorsements?: string[] | null
@@ -273,6 +297,16 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      comparison_operator:
+        | "greater_than"
+        | "less_than"
+        | "equal_to"
+        | "not_equal_to"
+        | "greater_than_or_equal"
+        | "less_than_or_equal"
+        | "contains"
+        | "not_contains"
+      logical_operator: "and" | "or" | "not"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -401,6 +435,17 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      comparison_operator: [
+        "greater_than",
+        "less_than",
+        "equal_to",
+        "not_equal_to",
+        "greater_than_or_equal",
+        "less_than_or_equal",
+        "contains",
+        "not_contains",
+      ],
+      logical_operator: ["and", "or", "not"],
     },
   },
 } as const
