@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Search, FileText } from "lucide-react";
+import { Search, FileText, Eye } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -20,6 +20,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import PDFViewer from "@/components/PDFViewer";
 
 interface CoverageDetail {
   insuranceCompany: string;
@@ -60,6 +68,7 @@ interface Document {
   upload_date: string;
   status: string;
   file_url: string;
+  file_type: string;
   extracted_data: ExtractedDataRaw[];
 }
 
@@ -69,6 +78,7 @@ const Documents = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
 
   useEffect(() => {
     fetchDocuments();
@@ -212,6 +222,9 @@ const Documents = () => {
                     <TableHead className="min-w-[130px] bg-accent/20">Trailer Effective Date</TableHead>
                     <TableHead className="min-w-[130px] bg-accent/20">Trailer Expiry Date</TableHead>
                     <TableHead className="min-w-[200px] bg-accent/20">Trailer Description</TableHead>
+                    
+                    {/* Actions */}
+                    <TableHead className="sticky right-0 bg-background min-w-[100px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -222,7 +235,11 @@ const Documents = () => {
                     const trailer = extracted?.coverages?.trailerLiability;
                     
                     return (
-                      <TableRow key={doc.id}>
+                      <TableRow 
+                        key={doc.id} 
+                        className="cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => setSelectedDocument(doc)}
+                      >
                         {/* Document Info */}
                         <TableCell className="sticky left-0 bg-background font-medium">{doc.file_name}</TableCell>
                         <TableCell>{new Date(doc.upload_date).toLocaleDateString()}</TableCell>
@@ -270,6 +287,20 @@ const Documents = () => {
                         <TableCell className="bg-accent/20">{trailer?.effectiveDate || '-'}</TableCell>
                         <TableCell className="bg-accent/20">{trailer?.expiryDate || '-'}</TableCell>
                         <TableCell className="bg-accent/20">{trailer?.description || '-'}</TableCell>
+                        
+                        {/* Actions */}
+                        <TableCell className="sticky right-0 bg-background">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedDocument(doc);
+                            }}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     );
                   })}
@@ -280,6 +311,30 @@ const Documents = () => {
           </ScrollArea>
         </Card>
       )}
+
+      {/* PDF Viewer Dialog */}
+      <Dialog open={!!selectedDocument} onOpenChange={(open) => !open && setSelectedDocument(null)}>
+        <DialogContent className="max-w-5xl h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>{selectedDocument?.file_name}</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-hidden">
+            {selectedDocument && (
+              selectedDocument.file_type === 'application/pdf' ? (
+                <PDFViewer fileUrl={selectedDocument.file_url} />
+              ) : (
+                <div className="h-full flex items-center justify-center">
+                  <img 
+                    src={selectedDocument.file_url} 
+                    alt={selectedDocument.file_name}
+                    className="max-w-full max-h-full object-contain"
+                  />
+                </div>
+              )
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
