@@ -39,6 +39,86 @@ interface CoverageDetail {
   deductible: string;
   effectiveDate: string;
   expiryDate: string;
+  description?: string;
+}
+
+// File-specific mock data configuration
+const MOCK_DATA_BY_FILENAME: Record<string, ExtractedData> = {
+  "Example1.pdf": {
+    namedInsured: "EDM Express Inc.\n9623 25 Ave NW, Edmonton, AB, T6N 1H7",
+    certificateHolder: "EDM Trailer Rentals,\n9623 25 Ave, Edmonton, AB",
+    additionalInsured: "EDM Trailer Rentals,\n9623 25 Ave, Edmonton, AB",
+    cancellationNotice: "30 days written notice",
+    formType: "CSIO C0910ECL - CERTIFICATE OF LIABILITY INSURANCE - 2010/09",
+    coverages: {
+      generalLiability: {
+        insuranceCompany: "Intact Insurance Co.",
+        policyNumber: "654321",
+        coverageLimit: "2,000,000",
+        currency: "CAD",
+        deductible: "0",
+        effectiveDate: "2025-11-24",
+        expiryDate: "2026-11-24",
+      },
+      autoLiability: {
+        insuranceCompany: "Intact Insurance Co.",
+        policyNumber: "123456",
+        coverageLimit: "2,000,000",
+        currency: "CAD",
+        deductible: "0",
+        effectiveDate: "2025-11-24",
+        expiryDate: "2026-11-24",
+      },
+      trailerLiability: {
+        insuranceCompany: "Intact Insurance Co.",
+        policyNumber: "123456",
+        coverageLimit: "85,000",
+        currency: "CAD",
+        deductible: "5,000",
+        effectiveDate: "2025-11-24",
+        expiryDate: "2026-11-24",
+        description: "SEF 27 Non Owned Trailer",
+      },
+    },
+  },
+};
+
+// Default mock data for files not in configuration
+const DEFAULT_MOCK_DATA: ExtractedData = {
+  namedInsured: "ABC Company Inc.",
+  certificateHolder: "XYZ Corporation",
+  additionalInsured: "XYZ Corp and subsidiaries",
+  cancellationNotice: "30 days",
+  formType: "ACORD 25",
+  coverages: {
+    generalLiability: {
+      insuranceCompany: "Sample Insurance Co.",
+      policyNumber: "GL-123456",
+      coverageLimit: "1,000,000",
+      currency: "USD",
+      deductible: "5,000",
+      effectiveDate: "2024-01-01",
+      expiryDate: "2025-01-01",
+    },
+    autoLiability: {
+      insuranceCompany: "Auto Insurance Co.",
+      policyNumber: "AL-789012",
+      coverageLimit: "2,000,000",
+      currency: "USD",
+      deductible: "10,000",
+      effectiveDate: "2024-01-01",
+      expiryDate: "2025-01-01",
+    },
+    trailerLiability: {
+      insuranceCompany: "Trailer Insurance Co.",
+      policyNumber: "TL-345678",
+      coverageLimit: "500,000",
+      currency: "USD",
+      deductible: "2,500",
+      effectiveDate: "2024-01-01",
+      expiryDate: "2025-01-01",
+    },
+  },
 }
 
 const Dashboard = () => {
@@ -165,43 +245,9 @@ const Dashboard = () => {
           )
         );
         
-        // Simulate extracted data
-        setExtractedData({
-          namedInsured: "ABC Company Inc.",
-          certificateHolder: "XYZ Corporation",
-          additionalInsured: "XYZ Corp and subsidiaries",
-          cancellationNotice: "30 days",
-          formType: "ACORD 25",
-          coverages: {
-            generalLiability: {
-              insuranceCompany: "Sample Insurance Co.",
-              policyNumber: "GL-123456",
-              coverageLimit: "1,000,000",
-              currency: "USD",
-              deductible: "5,000",
-              effectiveDate: "2024-01-01",
-              expiryDate: "2025-01-01",
-            },
-            autoLiability: {
-              insuranceCompany: "Auto Insurance Co.",
-              policyNumber: "AL-789012",
-              coverageLimit: "2,000,000",
-              currency: "USD",
-              deductible: "10,000",
-              effectiveDate: "2024-01-01",
-              expiryDate: "2025-01-01",
-            },
-            trailerLiability: {
-              insuranceCompany: "Trailer Insurance Co.",
-              policyNumber: "TL-345678",
-              coverageLimit: "500,000",
-              currency: "USD",
-              deductible: "2,500",
-              effectiveDate: "2024-01-01",
-              expiryDate: "2025-01-01",
-            },
-          },
-        });
+        // Use file-specific mock data or default
+        const mockData = MOCK_DATA_BY_FILENAME[selectedFile.name] || DEFAULT_MOCK_DATA;
+        setExtractedData(mockData);
         
         toast({
           title: "Processing complete",
