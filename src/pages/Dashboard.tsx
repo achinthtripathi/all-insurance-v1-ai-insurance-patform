@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import PDFViewer from "@/components/PDFViewer";
+import { supabase } from "@/integrations/supabase/client";
 
 interface UploadedDocument {
   id: string;
@@ -127,6 +128,7 @@ const Dashboard = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState("");
   const [uploadedDocuments, setUploadedDocuments] = useState<UploadedDocument[]>([]);
   const [imageZoom, setImageZoom] = useState(100);
   const [processedFileType, setProcessedFileType] = useState<string | null>(null);
@@ -202,67 +204,90 @@ const Dashboard = () => {
     if (!selectedFile) return;
 
     setIsUploading(true);
+    setIsProcessing(true);
+    
     try {
-      // Create a local URL for the uploaded file (development mode)
-      const fileUrl = URL.createObjectURL(selectedFile);
-      
+      // Upload PDF to storage bucket
+      setProcessingStatus("Uploading document...");
+      const filePath = `temp/${Date.now()}_${selectedFile.name}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('documents')
+        .upload(filePath, selectedFile);
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('documents')
+        .getPublicUrl(filePath);
+
+      // Store file type for preview
+      setProcessedFileType(selectedFile.type);
+
+      setProcessingStatus("Extracting certificate data...");
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
+      // Use file-specific mock data or default
+      const mockData = MOCK_DATA_BY_FILENAME[selectedFile.name] || DEFAULT_MOCK_DATA;
+
+      // Insert document record
+      const { data: docData, error: docError } = await supabase
+        .from('documents')
+        .insert({
+          user_id: '00000000-0000-0000-0000-000000000000',
+          file_name: selectedFile.name,
+          file_url: publicUrl,
+          file_type: selectedFile.type,
+          status: 'uploaded'
+        })
+        .select()
+        .single();
+
+      if (docError) throw docError;
+
+      // Insert extracted data
+      const { error: extractError } = await supabase
+        .from('extracted_data')
+        .insert({
+          document_id: docData.id,
+          named_insured: mockData.namedInsured,
+          certificate_holder: mockData.certificateHolder,
+          additional_insured: mockData.additionalInsured,
+          cancellation_notice_period: mockData.cancellationNotice,
+          form_type: mockData.formType,
+          coverages: mockData.coverages as any
+        } as any);
+
+      if (extractError) throw extractError;
+
+      // Add to uploaded documents list
       const newDocument: UploadedDocument = {
-        id: Date.now().toString(),
+        id: docData.id,
         fileName: selectedFile.name,
         fileType: selectedFile.type,
         uploadDate: new Date(),
-        status: "processing",
-        fileUrl: fileUrl,
+        status: "completed",
+        fileUrl: publicUrl,
       };
-      
-      // Add to documents list
-      setUploadedDocuments(prev => [newDocument, ...prev]);
-      
-      toast({
-        title: "Success",
-        description: "Document uploaded successfully",
-      });
 
-      // Store file type for preview after processing
-      setProcessedFileType(selectedFile.type);
+      setUploadedDocuments(prev => [newDocument, ...prev]);
+      setExtractedData(mockData);
       
-      // Start processing simulation
-      setIsProcessing(true);
       toast({
-        title: "Processing",
-        description: "Extracting certificate data...",
+        title: "Processing complete",
+        description: "Certificate data has been extracted and saved successfully.",
       });
-      
-      setTimeout(() => {
-        setIsProcessing(false);
-        
-        // Update document status to completed
-        setUploadedDocuments(prev => 
-          prev.map(doc => 
-            doc.id === newDocument.id 
-              ? { ...doc, status: "completed" }
-              : doc
-          )
-        );
-        
-        // Use file-specific mock data or default
-        const mockData = MOCK_DATA_BY_FILENAME[selectedFile.name] || DEFAULT_MOCK_DATA;
-        setExtractedData(mockData);
-        
-        toast({
-          title: "Processing complete",
-          description: "Certificate data extracted successfully",
-        });
-      }, 3000);
-      
     } catch (error: any) {
+      console.error('Upload error:', error);
       toast({
-        title: "Upload failed",
-        description: error.message,
+        title: "Processing failed",
+        description: error.message || "There was an error processing your document.",
         variant: "destructive",
       });
     } finally {
       setIsUploading(false);
+      setIsProcessing(false);
+      setProcessingStatus("");
     }
   };
 
