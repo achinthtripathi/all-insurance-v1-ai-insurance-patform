@@ -40,6 +40,16 @@ export const CERTIFICATE_FIELDS = {
 
 export type CertificateFieldKey = keyof typeof CERTIFICATE_FIELDS;
 
+// Date fields for special handling in requirements
+export const DATE_FIELDS = new Set([
+  "gl_effective_date",
+  "gl_expiry_date",
+  "auto_effective_date",
+  "auto_expiry_date",
+  "trailer_effective_date",
+  "trailer_expiry_date",
+]);
+
 export const COMPARISON_OPERATORS = {
   equal_to: "Equal to (=)",
   not_equal_to: "Not equal to (≠)",
@@ -49,6 +59,7 @@ export const COMPARISON_OPERATORS = {
   less_than_or_equal: "Less than or equal (≤)",
   contains: "Contains",
   not_contains: "Does not contain",
+  within_days: "Expires within (days)",
 } as const;
 
 export type ComparisonOperator = keyof typeof COMPARISON_OPERATORS;
