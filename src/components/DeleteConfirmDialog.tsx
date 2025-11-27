@@ -51,7 +51,7 @@ export const DeleteConfirmDialog = ({
         // Continue anyway - database cleanup is more important
       }
 
-      // 2. Delete extracted_data (will cascade via FK or manual delete)
+      // 2. Delete extracted_data first
       const { error: extractError } = await supabase
         .from('extracted_data')
         .delete()
@@ -59,6 +59,7 @@ export const DeleteConfirmDialog = ({
 
       if (extractError) {
         console.error("Extract data deletion error:", extractError);
+        // Continue anyway to clean up document
       }
 
       // 3. Delete document record
@@ -67,7 +68,10 @@ export const DeleteConfirmDialog = ({
         .delete()
         .eq('id', documentId);
 
-      if (docError) throw docError;
+      if (docError) {
+        console.error("Document deletion error:", docError);
+        throw docError;
+      }
 
       toast({
         title: "Success",
