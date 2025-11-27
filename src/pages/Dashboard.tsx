@@ -8,7 +8,6 @@ import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import PDFViewer from "@/components/PDFViewer";
-import { supabase } from "@/integrations/supabase/client";
 
 interface UploadedDocument {
   id: string;
@@ -40,86 +39,6 @@ interface CoverageDetail {
   deductible: string;
   effectiveDate: string;
   expiryDate: string;
-  description?: string;
-}
-
-// File-specific mock data configuration
-const MOCK_DATA_BY_FILENAME: Record<string, ExtractedData> = {
-  "Example1.pdf": {
-    namedInsured: "EDM Express Inc.\n9623 25 Ave NW, Edmonton, AB, T6N 1H7",
-    certificateHolder: "EDM Trailer Rentals,\n9623 25 Ave, Edmonton, AB",
-    additionalInsured: "EDM Trailer Rentals,\n9623 25 Ave, Edmonton, AB",
-    cancellationNotice: "30 days written notice",
-    formType: "CSIO C0910ECL - CERTIFICATE OF LIABILITY INSURANCE - 2010/09",
-    coverages: {
-      generalLiability: {
-        insuranceCompany: "Intact Insurance Co.",
-        policyNumber: "654321",
-        coverageLimit: "2,000,000",
-        currency: "CAD",
-        deductible: "0",
-        effectiveDate: "2025-11-24",
-        expiryDate: "2026-11-24",
-      },
-      autoLiability: {
-        insuranceCompany: "Intact Insurance Co.",
-        policyNumber: "123456",
-        coverageLimit: "2,000,000",
-        currency: "CAD",
-        deductible: "0",
-        effectiveDate: "2025-11-24",
-        expiryDate: "2026-11-24",
-      },
-      trailerLiability: {
-        insuranceCompany: "Intact Insurance Co.",
-        policyNumber: "123456",
-        coverageLimit: "85,000",
-        currency: "CAD",
-        deductible: "5,000",
-        effectiveDate: "2025-11-24",
-        expiryDate: "2026-11-24",
-        description: "SEF 27 Non Owned Trailer",
-      },
-    },
-  },
-};
-
-// Default mock data for files not in configuration
-const DEFAULT_MOCK_DATA: ExtractedData = {
-  namedInsured: "ABC Company Inc.",
-  certificateHolder: "XYZ Corporation",
-  additionalInsured: "XYZ Corp and subsidiaries",
-  cancellationNotice: "30 days",
-  formType: "ACORD 25",
-  coverages: {
-    generalLiability: {
-      insuranceCompany: "Sample Insurance Co.",
-      policyNumber: "GL-123456",
-      coverageLimit: "1,000,000",
-      currency: "USD",
-      deductible: "5,000",
-      effectiveDate: "2024-01-01",
-      expiryDate: "2025-01-01",
-    },
-    autoLiability: {
-      insuranceCompany: "Auto Insurance Co.",
-      policyNumber: "AL-789012",
-      coverageLimit: "2,000,000",
-      currency: "USD",
-      deductible: "10,000",
-      effectiveDate: "2024-01-01",
-      expiryDate: "2025-01-01",
-    },
-    trailerLiability: {
-      insuranceCompany: "Trailer Insurance Co.",
-      policyNumber: "TL-345678",
-      coverageLimit: "500,000",
-      currency: "USD",
-      deductible: "2,500",
-      effectiveDate: "2024-01-01",
-      expiryDate: "2025-01-01",
-    },
-  },
 }
 
 const Dashboard = () => {
@@ -128,7 +47,6 @@ const Dashboard = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [processingStatus, setProcessingStatus] = useState("");
   const [uploadedDocuments, setUploadedDocuments] = useState<UploadedDocument[]>([]);
   const [imageZoom, setImageZoom] = useState(100);
   const [processedFileType, setProcessedFileType] = useState<string | null>(null);
@@ -204,90 +122,101 @@ const Dashboard = () => {
     if (!selectedFile) return;
 
     setIsUploading(true);
-    setIsProcessing(true);
-    
     try {
-      // Upload PDF to storage bucket
-      setProcessingStatus("Uploading document...");
-      const filePath = `temp/${Date.now()}_${selectedFile.name}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('documents')
-        .upload(filePath, selectedFile);
-
-      if (uploadError) throw uploadError;
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('documents')
-        .getPublicUrl(filePath);
-
-      // Store file type for preview
-      setProcessedFileType(selectedFile.type);
-
-      setProcessingStatus("Extracting certificate data...");
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      // Use file-specific mock data or default
-      const mockData = MOCK_DATA_BY_FILENAME[selectedFile.name] || DEFAULT_MOCK_DATA;
-
-      // Insert document record
-      const { data: docData, error: docError } = await supabase
-        .from('documents')
-        .insert({
-          user_id: '00000000-0000-0000-0000-000000000000',
-          file_name: selectedFile.name,
-          file_url: publicUrl,
-          file_type: selectedFile.type,
-          status: 'uploaded'
-        })
-        .select()
-        .single();
-
-      if (docError) throw docError;
-
-      // Insert extracted data
-      const { error: extractError } = await supabase
-        .from('extracted_data')
-        .insert({
-          document_id: docData.id,
-          named_insured: mockData.namedInsured,
-          certificate_holder: mockData.certificateHolder,
-          additional_insured: mockData.additionalInsured,
-          cancellation_notice_period: mockData.cancellationNotice,
-          form_type: mockData.formType,
-          coverages: mockData.coverages as any
-        } as any);
-
-      if (extractError) throw extractError;
-
-      // Add to uploaded documents list
+      // Create a local URL for the uploaded file (development mode)
+      const fileUrl = URL.createObjectURL(selectedFile);
+      
       const newDocument: UploadedDocument = {
-        id: docData.id,
+        id: Date.now().toString(),
         fileName: selectedFile.name,
         fileType: selectedFile.type,
         uploadDate: new Date(),
-        status: "completed",
-        fileUrl: publicUrl,
+        status: "processing",
+        fileUrl: fileUrl,
       };
-
+      
+      // Add to documents list
       setUploadedDocuments(prev => [newDocument, ...prev]);
-      setExtractedData(mockData);
       
       toast({
-        title: "Processing complete",
-        description: "Certificate data has been extracted and saved successfully.",
+        title: "Success",
+        description: "Document uploaded successfully",
       });
-    } catch (error: any) {
-      console.error('Upload error:', error);
+
+      // Store file type for preview after processing
+      setProcessedFileType(selectedFile.type);
+      
+      // Start processing simulation
+      setIsProcessing(true);
       toast({
-        title: "Processing failed",
-        description: error.message || "There was an error processing your document.",
+        title: "Processing",
+        description: "Extracting certificate data...",
+      });
+      
+      setTimeout(() => {
+        setIsProcessing(false);
+        
+        // Update document status to completed
+        setUploadedDocuments(prev => 
+          prev.map(doc => 
+            doc.id === newDocument.id 
+              ? { ...doc, status: "completed" }
+              : doc
+          )
+        );
+        
+        // Simulate extracted data
+        setExtractedData({
+          namedInsured: "ABC Company Inc.",
+          certificateHolder: "XYZ Corporation",
+          additionalInsured: "XYZ Corp and subsidiaries",
+          cancellationNotice: "30 days",
+          formType: "ACORD 25",
+          coverages: {
+            generalLiability: {
+              insuranceCompany: "Sample Insurance Co.",
+              policyNumber: "GL-123456",
+              coverageLimit: "1,000,000",
+              currency: "USD",
+              deductible: "5,000",
+              effectiveDate: "2024-01-01",
+              expiryDate: "2025-01-01",
+            },
+            autoLiability: {
+              insuranceCompany: "Auto Insurance Co.",
+              policyNumber: "AL-789012",
+              coverageLimit: "2,000,000",
+              currency: "USD",
+              deductible: "10,000",
+              effectiveDate: "2024-01-01",
+              expiryDate: "2025-01-01",
+            },
+            trailerLiability: {
+              insuranceCompany: "Trailer Insurance Co.",
+              policyNumber: "TL-345678",
+              coverageLimit: "500,000",
+              currency: "USD",
+              deductible: "2,500",
+              effectiveDate: "2024-01-01",
+              expiryDate: "2025-01-01",
+            },
+          },
+        });
+        
+        toast({
+          title: "Processing complete",
+          description: "Certificate data extracted successfully",
+        });
+      }, 3000);
+      
+    } catch (error: any) {
+      toast({
+        title: "Upload failed",
+        description: error.message,
         variant: "destructive",
       });
     } finally {
       setIsUploading(false);
-      setIsProcessing(false);
-      setProcessingStatus("");
     }
   };
 
