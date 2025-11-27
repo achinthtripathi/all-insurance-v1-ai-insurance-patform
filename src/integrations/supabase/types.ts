@@ -83,15 +83,7 @@ export type Database = {
           upload_date?: string | null
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "documents_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       extracted_data: {
         Row: {
