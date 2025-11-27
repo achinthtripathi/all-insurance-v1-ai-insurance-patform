@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,11 +8,6 @@ import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import PDFViewer from "@/components/PDFViewer";
-import { supabase } from "@/integrations/supabase/client";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { validateField, ValidationStatus } from "@/lib/validation";
-import { ValidationIndicator } from "@/components/ValidationIndicator";
-import { ComparisonOperator } from "@/lib/certificateFields";
 
 interface UploadedDocument {
   id: string;
@@ -46,21 +41,6 @@ interface CoverageDetail {
   expiryDate: string;
 }
 
-interface RequirementSet {
-  id: string;
-  name: string;
-  description: string | null;
-}
-
-interface RequirementRule {
-  id: string;
-  field_name: string;
-  comparison_operator: ComparisonOperator;
-  expected_value: string;
-}
-
-const TEMP_USER_ID = "00000000-0000-0000-0000-000000000000";
-
 const Dashboard = () => {
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
@@ -70,10 +50,6 @@ const Dashboard = () => {
   const [uploadedDocuments, setUploadedDocuments] = useState<UploadedDocument[]>([]);
   const [imageZoom, setImageZoom] = useState(100);
   const [processedFileType, setProcessedFileType] = useState<string | null>(null);
-  const [requirementSets, setRequirementSets] = useState<RequirementSet[]>([]);
-  const [selectedRequirementSetId, setSelectedRequirementSetId] = useState<string>("");
-  const [requirementRules, setRequirementRules] = useState<RequirementRule[]>([]);
-  const [validationResults, setValidationResults] = useState<Record<string, ValidationStatus>>({});
   const [extractedData, setExtractedData] = useState<ExtractedData>({
     namedInsured: "",
     certificateHolder: "",
@@ -110,155 +86,6 @@ const Dashboard = () => {
       },
     },
   });
-
-  // Load requirement sets on mount
-  useEffect(() => {
-    loadRequirementSets();
-  }, []);
-
-  // Load rules when a requirement set is selected
-  useEffect(() => {
-    if (selectedRequirementSetId) {
-      loadRequirementRules(selectedRequirementSetId);
-    } else {
-      setRequirementRules([]);
-    }
-  }, [selectedRequirementSetId]);
-
-  // Run validation whenever extracted data or rules change
-  useEffect(() => {
-    if (requirementRules.length > 0) {
-      runValidation();
-    } else {
-      setValidationResults({});
-    }
-  }, [extractedData, requirementRules]);
-
-  const loadRequirementSets = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("requirement_sets")
-        .select("id, name, description")
-        .eq("user_id", TEMP_USER_ID)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setRequirementSets(data || []);
-    } catch (error: any) {
-      console.error("Error loading requirement sets:", error);
-    }
-  };
-
-  const loadRequirementRules = async (setId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from("requirements")
-        .select("id, field_name, comparison_operator, expected_value")
-        .eq("requirement_set_id", setId);
-
-      if (error) throw error;
-      setRequirementRules(data || []);
-    } catch (error: any) {
-      console.error("Error loading requirement rules:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load requirement rules",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const runValidation = () => {
-    const results: Record<string, ValidationStatus> = {};
-
-    requirementRules.forEach((rule) => {
-      let fieldValue: string | undefined;
-
-      // Map database field names to extracted data fields
-      switch (rule.field_name) {
-        case "named_insured":
-          fieldValue = extractedData.namedInsured;
-          break;
-        case "certificate_holder":
-          fieldValue = extractedData.certificateHolder;
-          break;
-        case "additional_insured":
-          fieldValue = extractedData.additionalInsured;
-          break;
-        case "cancellation_notice_period":
-          fieldValue = extractedData.cancellationNotice;
-          break;
-        case "form_type":
-          fieldValue = extractedData.formType;
-          break;
-        case "gl_insurance_company":
-          fieldValue = extractedData.coverages.generalLiability.insuranceCompany;
-          break;
-        case "gl_policy_number":
-          fieldValue = extractedData.coverages.generalLiability.policyNumber;
-          break;
-        case "gl_coverage_limit":
-          fieldValue = extractedData.coverages.generalLiability.coverageLimit;
-          break;
-        case "gl_deductible":
-          fieldValue = extractedData.coverages.generalLiability.deductible;
-          break;
-        case "gl_effective_date":
-          fieldValue = extractedData.coverages.generalLiability.effectiveDate;
-          break;
-        case "gl_expiry_date":
-          fieldValue = extractedData.coverages.generalLiability.expiryDate;
-          break;
-        case "auto_insurance_company":
-          fieldValue = extractedData.coverages.autoLiability.insuranceCompany;
-          break;
-        case "auto_policy_number":
-          fieldValue = extractedData.coverages.autoLiability.policyNumber;
-          break;
-        case "auto_coverage_limit":
-          fieldValue = extractedData.coverages.autoLiability.coverageLimit;
-          break;
-        case "auto_deductible":
-          fieldValue = extractedData.coverages.autoLiability.deductible;
-          break;
-        case "auto_effective_date":
-          fieldValue = extractedData.coverages.autoLiability.effectiveDate;
-          break;
-        case "auto_expiry_date":
-          fieldValue = extractedData.coverages.autoLiability.expiryDate;
-          break;
-        case "trailer_insurance_company":
-          fieldValue = extractedData.coverages.trailerLiability.insuranceCompany;
-          break;
-        case "trailer_policy_number":
-          fieldValue = extractedData.coverages.trailerLiability.policyNumber;
-          break;
-        case "trailer_coverage_limit":
-          fieldValue = extractedData.coverages.trailerLiability.coverageLimit;
-          break;
-        case "trailer_deductible":
-          fieldValue = extractedData.coverages.trailerLiability.deductible;
-          break;
-        case "trailer_effective_date":
-          fieldValue = extractedData.coverages.trailerLiability.effectiveDate;
-          break;
-        case "trailer_expiry_date":
-          fieldValue = extractedData.coverages.trailerLiability.expiryDate;
-          break;
-      }
-
-      if (fieldValue !== undefined) {
-        const result = validateField(
-          fieldValue,
-          rule.expected_value,
-          rule.comparison_operator
-        );
-        results[rule.field_name] = result.status;
-      }
-    });
-
-    setValidationResults(results);
-  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -577,40 +404,12 @@ const Dashboard = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Requirement Set Selector */}
-            <div className="space-y-2 p-4 border rounded-lg bg-muted/30">
-              <Label htmlFor="requirement-set">Validate Against Requirements</Label>
-              <Select value={selectedRequirementSetId} onValueChange={setSelectedRequirementSetId}>
-                <SelectTrigger id="requirement-set">
-                  <SelectValue placeholder="Select requirement set (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">None</SelectItem>
-                  {requirementSets.map((set) => (
-                    <SelectItem key={set.id} value={set.id}>
-                      {set.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {selectedRequirementSetId && requirementRules.length > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  Validating {requirementRules.length} rule(s)
-                </p>
-              )}
-            </div>
-
             {/* General Information Section */}
             <div className="space-y-4">
               <h4 className="font-semibold text-sm">General Information</h4>
               
               <div className="space-y-2">
-                <Label htmlFor="namedInsured" className="flex items-center gap-2">
-                  Named Insured
-                  {validationResults.named_insured && (
-                    <ValidationIndicator status={validationResults.named_insured} />
-                  )}
-                </Label>
+                <Label htmlFor="namedInsured">Named Insured</Label>
                 <Input
                   id="namedInsured"
                   value={extractedData.namedInsured}
@@ -620,12 +419,7 @@ const Dashboard = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="certificateHolder" className="flex items-center gap-2">
-                  Certificate Holder
-                  {validationResults.certificate_holder && (
-                    <ValidationIndicator status={validationResults.certificate_holder} />
-                  )}
-                </Label>
+                <Label htmlFor="certificateHolder">Certificate Holder</Label>
                 <Input
                   id="certificateHolder"
                   value={extractedData.certificateHolder}
@@ -635,12 +429,7 @@ const Dashboard = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="additionalInsured" className="flex items-center gap-2">
-                  Additional Insured
-                  {validationResults.additional_insured && (
-                    <ValidationIndicator status={validationResults.additional_insured} />
-                  )}
-                </Label>
+                <Label htmlFor="additionalInsured">Additional Insured</Label>
                 <Input
                   id="additionalInsured"
                   value={extractedData.additionalInsured}
@@ -651,12 +440,7 @@ const Dashboard = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="cancellationNotice" className="flex items-center gap-2">
-                    Cancellation Notice
-                    {validationResults.cancellation_notice_period && (
-                      <ValidationIndicator status={validationResults.cancellation_notice_period} />
-                    )}
-                  </Label>
+                  <Label htmlFor="cancellationNotice">Cancellation Notice</Label>
                   <Input
                     id="cancellationNotice"
                     value={extractedData.cancellationNotice}
@@ -666,12 +450,7 @@ const Dashboard = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="formType" className="flex items-center gap-2">
-                    Form Type
-                    {validationResults.form_type && (
-                      <ValidationIndicator status={validationResults.form_type} />
-                    )}
-                  </Label>
+                  <Label htmlFor="formType">Form Type</Label>
                   <Input
                     id="formType"
                     value={extractedData.formType}
@@ -693,12 +472,7 @@ const Dashboard = () => {
                 <h5 className="font-medium text-sm">Commercial General Liability</h5>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
-                    <Label className="text-xs flex items-center gap-2">
-                      Insurance Company
-                      {validationResults.gl_insurance_company && (
-                        <ValidationIndicator status={validationResults.gl_insurance_company} />
-                      )}
-                    </Label>
+                    <Label className="text-xs">Insurance Company</Label>
                     <Input
                       value={extractedData.coverages.generalLiability.insuranceCompany}
                       onChange={(e) => setExtractedData({
@@ -712,12 +486,7 @@ const Dashboard = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs flex items-center gap-2">
-                      Policy Number
-                      {validationResults.gl_policy_number && (
-                        <ValidationIndicator status={validationResults.gl_policy_number} />
-                      )}
-                    </Label>
+                    <Label className="text-xs">Policy Number</Label>
                     <Input
                       value={extractedData.coverages.generalLiability.policyNumber}
                       onChange={(e) => setExtractedData({
@@ -731,12 +500,7 @@ const Dashboard = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs flex items-center gap-2">
-                      Coverage Limit
-                      {validationResults.gl_coverage_limit && (
-                        <ValidationIndicator status={validationResults.gl_coverage_limit} />
-                      )}
-                    </Label>
+                    <Label className="text-xs">Coverage Limit</Label>
                     <Input
                       value={extractedData.coverages.generalLiability.coverageLimit}
                       onChange={(e) => setExtractedData({
@@ -750,12 +514,7 @@ const Dashboard = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs flex items-center gap-2">
-                      Deductible
-                      {validationResults.gl_deductible && (
-                        <ValidationIndicator status={validationResults.gl_deductible} />
-                      )}
-                    </Label>
+                    <Label className="text-xs">Deductible</Label>
                     <Input
                       value={extractedData.coverages.generalLiability.deductible}
                       onChange={(e) => setExtractedData({
@@ -769,12 +528,7 @@ const Dashboard = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs flex items-center gap-2">
-                      Effective Date
-                      {validationResults.gl_effective_date && (
-                        <ValidationIndicator status={validationResults.gl_effective_date} />
-                      )}
-                    </Label>
+                    <Label className="text-xs">Effective Date</Label>
                     <Input
                       type="date"
                       value={extractedData.coverages.generalLiability.effectiveDate}
@@ -789,12 +543,7 @@ const Dashboard = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs flex items-center gap-2">
-                      Expiry Date
-                      {validationResults.gl_expiry_date && (
-                        <ValidationIndicator status={validationResults.gl_expiry_date} />
-                      )}
-                    </Label>
+                    <Label className="text-xs">Expiry Date</Label>
                     <Input
                       type="date"
                       value={extractedData.coverages.generalLiability.expiryDate}
@@ -816,12 +565,7 @@ const Dashboard = () => {
                 <h5 className="font-medium text-sm">Automobile Liability</h5>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
-                    <Label className="text-xs flex items-center gap-2">
-                      Insurance Company
-                      {validationResults.auto_insurance_company && (
-                        <ValidationIndicator status={validationResults.auto_insurance_company} />
-                      )}
-                    </Label>
+                    <Label className="text-xs">Insurance Company</Label>
                     <Input
                       value={extractedData.coverages.autoLiability.insuranceCompany}
                       onChange={(e) => setExtractedData({
@@ -835,12 +579,7 @@ const Dashboard = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs flex items-center gap-2">
-                      Policy Number
-                      {validationResults.auto_policy_number && (
-                        <ValidationIndicator status={validationResults.auto_policy_number} />
-                      )}
-                    </Label>
+                    <Label className="text-xs">Policy Number</Label>
                     <Input
                       value={extractedData.coverages.autoLiability.policyNumber}
                       onChange={(e) => setExtractedData({
@@ -854,12 +593,7 @@ const Dashboard = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs flex items-center gap-2">
-                      Coverage Limit
-                      {validationResults.auto_coverage_limit && (
-                        <ValidationIndicator status={validationResults.auto_coverage_limit} />
-                      )}
-                    </Label>
+                    <Label className="text-xs">Coverage Limit</Label>
                     <Input
                       value={extractedData.coverages.autoLiability.coverageLimit}
                       onChange={(e) => setExtractedData({
@@ -873,12 +607,7 @@ const Dashboard = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs flex items-center gap-2">
-                      Deductible
-                      {validationResults.auto_deductible && (
-                        <ValidationIndicator status={validationResults.auto_deductible} />
-                      )}
-                    </Label>
+                    <Label className="text-xs">Deductible</Label>
                     <Input
                       value={extractedData.coverages.autoLiability.deductible}
                       onChange={(e) => setExtractedData({
@@ -892,12 +621,7 @@ const Dashboard = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs flex items-center gap-2">
-                      Effective Date
-                      {validationResults.auto_effective_date && (
-                        <ValidationIndicator status={validationResults.auto_effective_date} />
-                      )}
-                    </Label>
+                    <Label className="text-xs">Effective Date</Label>
                     <Input
                       type="date"
                       value={extractedData.coverages.autoLiability.effectiveDate}
@@ -912,12 +636,7 @@ const Dashboard = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs flex items-center gap-2">
-                      Expiry Date
-                      {validationResults.auto_expiry_date && (
-                        <ValidationIndicator status={validationResults.auto_expiry_date} />
-                      )}
-                    </Label>
+                    <Label className="text-xs">Expiry Date</Label>
                     <Input
                       type="date"
                       value={extractedData.coverages.autoLiability.expiryDate}
@@ -939,12 +658,7 @@ const Dashboard = () => {
                 <h5 className="font-medium text-sm">Non-Owned Trailer Liability</h5>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
-                    <Label className="text-xs flex items-center gap-2">
-                      Insurance Company
-                      {validationResults.trailer_insurance_company && (
-                        <ValidationIndicator status={validationResults.trailer_insurance_company} />
-                      )}
-                    </Label>
+                    <Label className="text-xs">Insurance Company</Label>
                     <Input
                       value={extractedData.coverages.trailerLiability.insuranceCompany}
                       onChange={(e) => setExtractedData({
@@ -958,12 +672,7 @@ const Dashboard = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs flex items-center gap-2">
-                      Policy Number
-                      {validationResults.trailer_policy_number && (
-                        <ValidationIndicator status={validationResults.trailer_policy_number} />
-                      )}
-                    </Label>
+                    <Label className="text-xs">Policy Number</Label>
                     <Input
                       value={extractedData.coverages.trailerLiability.policyNumber}
                       onChange={(e) => setExtractedData({
@@ -977,12 +686,7 @@ const Dashboard = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs flex items-center gap-2">
-                      Coverage Limit
-                      {validationResults.trailer_coverage_limit && (
-                        <ValidationIndicator status={validationResults.trailer_coverage_limit} />
-                      )}
-                    </Label>
+                    <Label className="text-xs">Coverage Limit</Label>
                     <Input
                       value={extractedData.coverages.trailerLiability.coverageLimit}
                       onChange={(e) => setExtractedData({
@@ -996,12 +700,7 @@ const Dashboard = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs flex items-center gap-2">
-                      Deductible
-                      {validationResults.trailer_deductible && (
-                        <ValidationIndicator status={validationResults.trailer_deductible} />
-                      )}
-                    </Label>
+                    <Label className="text-xs">Deductible</Label>
                     <Input
                       value={extractedData.coverages.trailerLiability.deductible}
                       onChange={(e) => setExtractedData({
@@ -1015,12 +714,7 @@ const Dashboard = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs flex items-center gap-2">
-                      Effective Date
-                      {validationResults.trailer_effective_date && (
-                        <ValidationIndicator status={validationResults.trailer_effective_date} />
-                      )}
-                    </Label>
+                    <Label className="text-xs">Effective Date</Label>
                     <Input
                       type="date"
                       value={extractedData.coverages.trailerLiability.effectiveDate}
@@ -1035,12 +729,7 @@ const Dashboard = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs flex items-center gap-2">
-                      Expiry Date
-                      {validationResults.trailer_expiry_date && (
-                        <ValidationIndicator status={validationResults.trailer_expiry_date} />
-                      )}
-                    </Label>
+                    <Label className="text-xs">Expiry Date</Label>
                     <Input
                       type="date"
                       value={extractedData.coverages.trailerLiability.expiryDate}
