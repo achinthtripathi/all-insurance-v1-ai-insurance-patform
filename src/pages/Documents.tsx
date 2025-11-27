@@ -15,10 +15,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const TEMP_USER_ID = "00000000-0000-0000-0000-000000000000";
-
 const Documents = () => {
   const { toast } = useToast();
+  const [userId, setUserId] = useState<string | null>(null);
   const [documents, setDocuments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -26,6 +25,8 @@ const Documents = () => {
   const [deletingDocument, setDeletingDocument] = useState<{ id: string; name: string; url: string } | null>(null);
 
   const loadDocuments = async () => {
+    if (!userId) return;
+    
     try {
       setIsLoading(true);
       const { data, error } = await supabase
@@ -34,7 +35,7 @@ const Documents = () => {
           *,
           extracted_data (*)
         `)
-        .eq('user_id', TEMP_USER_ID)
+        .eq('user_id', userId)
         .order('upload_date', { ascending: false });
 
       if (error) throw error;
@@ -53,6 +54,15 @@ const Documents = () => {
   };
 
   useEffect(() => {
+    // Get user ID
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUserId(session?.user?.id ?? null);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!userId) return;
+    
     loadDocuments();
 
     // Set up realtime subscription
@@ -64,7 +74,7 @@ const Documents = () => {
           event: '*',
           schema: 'public',
           table: 'documents',
-          filter: `user_id=eq.${TEMP_USER_ID}`,
+          filter: `user_id=eq.${userId}`,
         },
         () => {
           loadDocuments();
@@ -75,15 +85,17 @@ const Documents = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [userId]);
 
   const handleDuplicate = async (doc: any) => {
+    if (!userId) return;
+    
     try {
       // Duplicate document record
       const { data: newDoc, error: docError } = await supabase
         .from('documents')
         .insert({
-          user_id: TEMP_USER_ID,
+          user_id: userId,
           file_name: `${doc.file_name} (Copy)`,
           file_type: doc.file_type,
           file_url: doc.file_url,
