@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,11 @@ import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import PDFViewer from "@/components/PDFViewer";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
+import { validateExtractedData, ValidationResult } from "@/lib/requirementValidation";
+import { ValidationStatusBadge } from "@/components/ValidationStatusBadge";
+import { CERTIFICATE_FIELDS } from "@/lib/certificateFields";
 
 interface UploadedDocument {
   id: string;
@@ -41,6 +46,8 @@ interface CoverageDetail {
   expiryDate: string;
 }
 
+const TEMP_USER_ID = "00000000-0000-0000-0000-000000000000";
+
 const Dashboard = () => {
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
@@ -50,6 +57,10 @@ const Dashboard = () => {
   const [uploadedDocuments, setUploadedDocuments] = useState<UploadedDocument[]>([]);
   const [imageZoom, setImageZoom] = useState(100);
   const [processedFileType, setProcessedFileType] = useState<string | null>(null);
+  const [requirementSets, setRequirementSets] = useState<any[]>([]);
+  const [selectedRequirementSetId, setSelectedRequirementSetId] = useState<string>("");
+  const [requirementRules, setRequirementRules] = useState<any[]>([]);
+  const [validationResults, setValidationResults] = useState<Map<string, ValidationResult>>(new Map());
   const [extractedData, setExtractedData] = useState<ExtractedData>({
     namedInsured: "",
     certificateHolder: "",
@@ -86,6 +97,67 @@ const Dashboard = () => {
       },
     },
   });
+
+  // Load requirement sets on mount
+  useEffect(() => {
+    loadRequirementSets();
+  }, []);
+
+  // Load rules when requirement set is selected
+  useEffect(() => {
+    if (selectedRequirementSetId) {
+      loadRequirementRules(selectedRequirementSetId);
+    } else {
+      setRequirementRules([]);
+      setValidationResults(new Map());
+    }
+  }, [selectedRequirementSetId]);
+
+  // Validate extracted data when rules or data change
+  useEffect(() => {
+    if (requirementRules.length > 0 && extractedData.namedInsured) {
+      const results = validateExtractedData(extractedData, requirementRules);
+      setValidationResults(results);
+    }
+  }, [requirementRules, extractedData]);
+
+  const loadRequirementSets = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("requirement_sets")
+        .select("id, name, description")
+        .eq("user_id", TEMP_USER_ID)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setRequirementSets(data || []);
+    } catch (error: any) {
+      console.error("Error loading requirement sets:", error);
+    }
+  };
+
+  const loadRequirementRules = async (requirementSetId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("requirements")
+        .select("*")
+        .eq("requirement_set_id", requirementSetId)
+        .order("created_at", { ascending: true });
+
+      if (error) throw error;
+      setRequirementRules(data || []);
+    } catch (error: any) {
+      toast({
+        title: "Error loading requirements",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const getValidationStatus = (fieldName: string): ValidationResult | undefined => {
+    return validationResults.get(fieldName);
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -273,6 +345,37 @@ const Dashboard = () => {
         </p>
       </div>
 
+      {/* Requirement Set Selection */}
+      {requirementSets.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Requirement Set</CardTitle>
+            <CardDescription>
+              Select a requirement set to validate extracted data against defined rules
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Select value={selectedRequirementSetId} onValueChange={setSelectedRequirementSetId}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select a requirement set..." />
+              </SelectTrigger>
+              <SelectContent>
+                {requirementSets.map((set) => (
+                  <SelectItem key={set.id} value={set.id}>
+                    {set.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedRequirementSetId && requirementRules.length > 0 && (
+              <p className="text-sm text-muted-foreground mt-2">
+                {requirementRules.length} validation rule{requirementRules.length !== 1 ? "s" : ""} active
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Upload & Preview Card */}
         <Card className="lg:col-span-1">
@@ -409,7 +512,12 @@ const Dashboard = () => {
               <h4 className="font-semibold text-sm">General Information</h4>
               
               <div className="space-y-2">
-                <Label htmlFor="namedInsured">Named Insured</Label>
+                <Label htmlFor="namedInsured" className="flex items-center gap-2">
+                  Named Insured
+                  {selectedRequirementSetId && getValidationStatus("named_insured") && (
+                    <ValidationStatusBadge status={getValidationStatus("named_insured")!.status} />
+                  )}
+                </Label>
                 <Input
                   id="namedInsured"
                   value={extractedData.namedInsured}
@@ -419,7 +527,12 @@ const Dashboard = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="certificateHolder">Certificate Holder</Label>
+                <Label htmlFor="certificateHolder" className="flex items-center gap-2">
+                  Certificate Holder
+                  {selectedRequirementSetId && getValidationStatus("certificate_holder") && (
+                    <ValidationStatusBadge status={getValidationStatus("certificate_holder")!.status} />
+                  )}
+                </Label>
                 <Input
                   id="certificateHolder"
                   value={extractedData.certificateHolder}
@@ -429,7 +542,12 @@ const Dashboard = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="additionalInsured">Additional Insured</Label>
+                <Label htmlFor="additionalInsured" className="flex items-center gap-2">
+                  Additional Insured
+                  {selectedRequirementSetId && getValidationStatus("additional_insured") && (
+                    <ValidationStatusBadge status={getValidationStatus("additional_insured")!.status} />
+                  )}
+                </Label>
                 <Input
                   id="additionalInsured"
                   value={extractedData.additionalInsured}
@@ -440,7 +558,12 @@ const Dashboard = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="cancellationNotice">Cancellation Notice</Label>
+                  <Label htmlFor="cancellationNotice" className="flex items-center gap-2">
+                    Cancellation Notice
+                    {selectedRequirementSetId && getValidationStatus("cancellation_notice_period") && (
+                      <ValidationStatusBadge status={getValidationStatus("cancellation_notice_period")!.status} />
+                    )}
+                  </Label>
                   <Input
                     id="cancellationNotice"
                     value={extractedData.cancellationNotice}
@@ -450,7 +573,12 @@ const Dashboard = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="formType">Form Type</Label>
+                  <Label htmlFor="formType" className="flex items-center gap-2">
+                    Form Type
+                    {selectedRequirementSetId && getValidationStatus("form_type") && (
+                      <ValidationStatusBadge status={getValidationStatus("form_type")!.status} />
+                    )}
+                  </Label>
                   <Input
                     id="formType"
                     value={extractedData.formType}
@@ -472,7 +600,12 @@ const Dashboard = () => {
                 <h5 className="font-medium text-sm">Commercial General Liability</h5>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
-                    <Label className="text-xs">Insurance Company</Label>
+                    <Label className="text-xs flex items-center gap-2">
+                      Insurance Company
+                      {selectedRequirementSetId && getValidationStatus("gl_company_name") && (
+                        <ValidationStatusBadge status={getValidationStatus("gl_company_name")!.status} />
+                      )}
+                    </Label>
                     <Input
                       value={extractedData.coverages.generalLiability.insuranceCompany}
                       onChange={(e) => setExtractedData({
@@ -486,7 +619,12 @@ const Dashboard = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs">Policy Number</Label>
+                    <Label className="text-xs flex items-center gap-2">
+                      Policy Number
+                      {selectedRequirementSetId && getValidationStatus("gl_policy_number") && (
+                        <ValidationStatusBadge status={getValidationStatus("gl_policy_number")!.status} />
+                      )}
+                    </Label>
                     <Input
                       value={extractedData.coverages.generalLiability.policyNumber}
                       onChange={(e) => setExtractedData({
@@ -500,7 +638,12 @@ const Dashboard = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs">Coverage Limit</Label>
+                    <Label className="text-xs flex items-center gap-2">
+                      Coverage Limit
+                      {selectedRequirementSetId && getValidationStatus("gl_coverage_limits") && (
+                        <ValidationStatusBadge status={getValidationStatus("gl_coverage_limits")!.status} />
+                      )}
+                    </Label>
                     <Input
                       value={extractedData.coverages.generalLiability.coverageLimit}
                       onChange={(e) => setExtractedData({
@@ -514,7 +657,12 @@ const Dashboard = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs">Deductible</Label>
+                    <Label className="text-xs flex items-center gap-2">
+                      Deductible
+                      {selectedRequirementSetId && getValidationStatus("gl_deductible") && (
+                        <ValidationStatusBadge status={getValidationStatus("gl_deductible")!.status} />
+                      )}
+                    </Label>
                     <Input
                       value={extractedData.coverages.generalLiability.deductible}
                       onChange={(e) => setExtractedData({
@@ -528,7 +676,12 @@ const Dashboard = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs">Effective Date</Label>
+                    <Label className="text-xs flex items-center gap-2">
+                      Effective Date
+                      {selectedRequirementSetId && getValidationStatus("gl_effective_date") && (
+                        <ValidationStatusBadge status={getValidationStatus("gl_effective_date")!.status} />
+                      )}
+                    </Label>
                     <Input
                       type="date"
                       value={extractedData.coverages.generalLiability.effectiveDate}
@@ -543,7 +696,12 @@ const Dashboard = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs">Expiry Date</Label>
+                    <Label className="text-xs flex items-center gap-2">
+                      Expiry Date
+                      {selectedRequirementSetId && getValidationStatus("gl_expiry_date") && (
+                        <ValidationStatusBadge status={getValidationStatus("gl_expiry_date")!.status} />
+                      )}
+                    </Label>
                     <Input
                       type="date"
                       value={extractedData.coverages.generalLiability.expiryDate}
@@ -565,7 +723,12 @@ const Dashboard = () => {
                 <h5 className="font-medium text-sm">Automobile Liability</h5>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
-                    <Label className="text-xs">Insurance Company</Label>
+                    <Label className="text-xs flex items-center gap-2">
+                      Insurance Company
+                      {selectedRequirementSetId && getValidationStatus("auto_company_name") && (
+                        <ValidationStatusBadge status={getValidationStatus("auto_company_name")!.status} />
+                      )}
+                    </Label>
                     <Input
                       value={extractedData.coverages.autoLiability.insuranceCompany}
                       onChange={(e) => setExtractedData({
@@ -579,7 +742,12 @@ const Dashboard = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs">Policy Number</Label>
+                    <Label className="text-xs flex items-center gap-2">
+                      Policy Number
+                      {selectedRequirementSetId && getValidationStatus("auto_policy_number") && (
+                        <ValidationStatusBadge status={getValidationStatus("auto_policy_number")!.status} />
+                      )}
+                    </Label>
                     <Input
                       value={extractedData.coverages.autoLiability.policyNumber}
                       onChange={(e) => setExtractedData({
@@ -593,7 +761,12 @@ const Dashboard = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs">Coverage Limit</Label>
+                    <Label className="text-xs flex items-center gap-2">
+                      Coverage Limit
+                      {selectedRequirementSetId && getValidationStatus("auto_coverage_limits") && (
+                        <ValidationStatusBadge status={getValidationStatus("auto_coverage_limits")!.status} />
+                      )}
+                    </Label>
                     <Input
                       value={extractedData.coverages.autoLiability.coverageLimit}
                       onChange={(e) => setExtractedData({
@@ -607,7 +780,12 @@ const Dashboard = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs">Deductible</Label>
+                    <Label className="text-xs flex items-center gap-2">
+                      Deductible
+                      {selectedRequirementSetId && getValidationStatus("auto_deductible") && (
+                        <ValidationStatusBadge status={getValidationStatus("auto_deductible")!.status} />
+                      )}
+                    </Label>
                     <Input
                       value={extractedData.coverages.autoLiability.deductible}
                       onChange={(e) => setExtractedData({
@@ -621,7 +799,12 @@ const Dashboard = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs">Effective Date</Label>
+                    <Label className="text-xs flex items-center gap-2">
+                      Effective Date
+                      {selectedRequirementSetId && getValidationStatus("auto_effective_date") && (
+                        <ValidationStatusBadge status={getValidationStatus("auto_effective_date")!.status} />
+                      )}
+                    </Label>
                     <Input
                       type="date"
                       value={extractedData.coverages.autoLiability.effectiveDate}
@@ -636,7 +819,12 @@ const Dashboard = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs">Expiry Date</Label>
+                    <Label className="text-xs flex items-center gap-2">
+                      Expiry Date
+                      {selectedRequirementSetId && getValidationStatus("auto_expiry_date") && (
+                        <ValidationStatusBadge status={getValidationStatus("auto_expiry_date")!.status} />
+                      )}
+                    </Label>
                     <Input
                       type="date"
                       value={extractedData.coverages.autoLiability.expiryDate}
@@ -658,7 +846,12 @@ const Dashboard = () => {
                 <h5 className="font-medium text-sm">Non-Owned Trailer Liability</h5>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
-                    <Label className="text-xs">Insurance Company</Label>
+                    <Label className="text-xs flex items-center gap-2">
+                      Insurance Company
+                      {selectedRequirementSetId && getValidationStatus("trailer_company_name") && (
+                        <ValidationStatusBadge status={getValidationStatus("trailer_company_name")!.status} />
+                      )}
+                    </Label>
                     <Input
                       value={extractedData.coverages.trailerLiability.insuranceCompany}
                       onChange={(e) => setExtractedData({
@@ -672,7 +865,12 @@ const Dashboard = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs">Policy Number</Label>
+                    <Label className="text-xs flex items-center gap-2">
+                      Policy Number
+                      {selectedRequirementSetId && getValidationStatus("trailer_policy_number") && (
+                        <ValidationStatusBadge status={getValidationStatus("trailer_policy_number")!.status} />
+                      )}
+                    </Label>
                     <Input
                       value={extractedData.coverages.trailerLiability.policyNumber}
                       onChange={(e) => setExtractedData({
@@ -686,7 +884,12 @@ const Dashboard = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs">Coverage Limit</Label>
+                    <Label className="text-xs flex items-center gap-2">
+                      Coverage Limit
+                      {selectedRequirementSetId && getValidationStatus("trailer_coverage_limits") && (
+                        <ValidationStatusBadge status={getValidationStatus("trailer_coverage_limits")!.status} />
+                      )}
+                    </Label>
                     <Input
                       value={extractedData.coverages.trailerLiability.coverageLimit}
                       onChange={(e) => setExtractedData({
@@ -700,7 +903,12 @@ const Dashboard = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs">Deductible</Label>
+                    <Label className="text-xs flex items-center gap-2">
+                      Deductible
+                      {selectedRequirementSetId && getValidationStatus("trailer_deductible") && (
+                        <ValidationStatusBadge status={getValidationStatus("trailer_deductible")!.status} />
+                      )}
+                    </Label>
                     <Input
                       value={extractedData.coverages.trailerLiability.deductible}
                       onChange={(e) => setExtractedData({
@@ -714,7 +922,12 @@ const Dashboard = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs">Effective Date</Label>
+                    <Label className="text-xs flex items-center gap-2">
+                      Effective Date
+                      {selectedRequirementSetId && getValidationStatus("trailer_effective_date") && (
+                        <ValidationStatusBadge status={getValidationStatus("trailer_effective_date")!.status} />
+                      )}
+                    </Label>
                     <Input
                       type="date"
                       value={extractedData.coverages.trailerLiability.effectiveDate}
@@ -729,7 +942,12 @@ const Dashboard = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs">Expiry Date</Label>
+                    <Label className="text-xs flex items-center gap-2">
+                      Expiry Date
+                      {selectedRequirementSetId && getValidationStatus("trailer_expiry_date") && (
+                        <ValidationStatusBadge status={getValidationStatus("trailer_expiry_date")!.status} />
+                      )}
+                    </Label>
                     <Input
                       type="date"
                       value={extractedData.coverages.trailerLiability.expiryDate}
