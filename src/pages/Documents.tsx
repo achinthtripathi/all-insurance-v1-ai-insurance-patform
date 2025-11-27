@@ -132,6 +132,12 @@ const Documents = () => {
     doc.file_name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const handleOpenDocument = (doc: any) => {
+    if (doc.file_url) {
+      window.open(doc.file_url, "_blank");
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "completed":
@@ -232,7 +238,11 @@ const Documents = () => {
                 const trailer = coverages.nonOwnedTrailer || {};
 
                 return (
-                  <tr key={doc.id} className="border-b hover:bg-muted/40">
+                  <tr
+                    key={doc.id}
+                    className="border-b hover:bg-muted/40 cursor-pointer"
+                    onClick={() => handleOpenDocument(doc)}
+                  >
                     <td className="px-3 py-2 max-w-xs truncate">{doc.file_name}</td>
                     <td className="px-3 py-2">
                       {doc.upload_date ? new Date(doc.upload_date).toLocaleDateString() : "-"}
@@ -270,11 +280,11 @@ const Documents = () => {
                     <td className="px-3 py-2 max-w-xs truncate">{trailer.effectiveDate || "-"}</td>
                     <td className="px-3 py-2 max-w-xs truncate">{trailer.expiryDate || "-"}</td>
                     <td className="px-3 py-2">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => window.open(doc.file_url, "_blank")}
+                          onClick={() => handleOpenDocument(doc)}
                           className="gap-2"
                         >
                           <Eye className="h-4 w-4" />
