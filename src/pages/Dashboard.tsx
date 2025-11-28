@@ -211,23 +211,27 @@ const Dashboard = () => {
 
     setIsUploading(true);
     setIsProcessing(true);
+    
     try {
       // 1. Upload file to Supabase Storage
-      const fileExt = selectedFile.name.split('.').pop();
-      const fileName = `${userId}/${Date.now()}_${selectedFile.name}`;
+      const storageFileName = `${userId}/${Date.now()}_${selectedFile.name}`;
       
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('documents')
-        .upload(fileName, selectedFile);
+        .upload(storageFileName, selectedFile);
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
+      // 2. Get public URL
       const { data: urlData } = supabase.storage
         .from('documents')
-        .getPublicUrl(fileName);
+        .getPublicUrl(storageFileName);
 
-      // Store file type for preview after processing
+      if (!urlData?.publicUrl) {
+        throw new Error('Failed to get file URL');
+      }
+
+      // Store temporary data
       setProcessedFileType(selectedFile.type);
       setTempFileUrl(urlData.publicUrl);
       
@@ -236,12 +240,12 @@ const Dashboard = () => {
         description: "Extracting certificate data...",
       });
       
-      // Call parse-certificate edge function
+      // 3. Call parse-certificate edge function with original filename for mock data matching
       const { data: parseData, error: parseError } = await supabase.functions.invoke('parse-certificate', {
         body: {
           documentUrl: urlData.publicUrl,
           documentId: null,
-          fileName: selectedFile.name
+          fileName: selectedFile.name // Pass original filename for mock data matching
         }
       });
 
@@ -249,32 +253,34 @@ const Dashboard = () => {
         console.error("Parse error:", parseError);
         toast({
           title: "Parsing failed",
-          description: parseError.message,
+          description: parseError.message || "Failed to parse certificate",
           variant: "destructive",
         });
-        setIsProcessing(false);
-        setIsUploading(false);
         return;
       }
 
-      if (!parseData.success) {
+      if (!parseData?.success) {
         toast({
           title: "Parsing failed",
-          description: parseData.error || "Failed to extract data",
+          description: parseData?.error || "Failed to extract data",
           variant: "destructive",
         });
-        setIsProcessing(false);
-        setIsUploading(false);
         return;
       }
 
-      // Transform the parsed data to match our UI structure
+      // 4. Transform parsed data to UI structure
       const parsedResult = parseData.data;
       const coverages = parsedResult.coverages || [];
       
       const glCoverage = coverages.find((c: any) => c.type === "Commercial General Liability") || {};
       const autoCoverage = coverages.find((c: any) => c.type === "Automobile Liability") || {};
       const trailerCoverage = coverages.find((c: any) => c.type === "Non-Owned Trailer Liability") || {};
+
+      // Helper to get deductible value with N/A handling
+      const getDeductibleValue = (limit: string) => {
+        if (!limit || limit === "0" || limit === "N/A") return "N/A";
+        return limit;
+      };
 
       const extractedDataFromAI: ExtractedData = {
         namedInsured: parsedResult.named_insured || "",
@@ -288,7 +294,7 @@ const Dashboard = () => {
             policyNumber: glCoverage.policy_number || "",
             coverageLimit: glCoverage.coverage_limit || "",
             currency: glCoverage.coverage_currency || "USD",
-            deductible: glCoverage.deductible_limit || "",
+            deductible: getDeductibleValue(glCoverage.deductible_limit),
             effectiveDate: glCoverage.effective_date || "",
             expiryDate: glCoverage.expiry_date || "",
           },
@@ -297,7 +303,7 @@ const Dashboard = () => {
             policyNumber: autoCoverage.policy_number || "",
             coverageLimit: autoCoverage.coverage_limit || "",
             currency: autoCoverage.coverage_currency || "USD",
-            deductible: autoCoverage.deductible_limit || "",
+            deductible: getDeductibleValue(autoCoverage.deductible_limit),
             effectiveDate: autoCoverage.effective_date || "",
             expiryDate: autoCoverage.expiry_date || "",
           },
@@ -306,7 +312,7 @@ const Dashboard = () => {
             policyNumber: trailerCoverage.policy_number || "",
             coverageLimit: trailerCoverage.coverage_limit || "",
             currency: trailerCoverage.coverage_currency || "USD",
-            deductible: trailerCoverage.deductible_limit || "",
+            deductible: getDeductibleValue(trailerCoverage.deductible_limit),
             effectiveDate: trailerCoverage.effective_date || "",
             expiryDate: trailerCoverage.expiry_date || "",
           },
@@ -315,8 +321,6 @@ const Dashboard = () => {
 
       setExtractedData(extractedDataFromAI);
       setIsProcessed(true);
-      setIsProcessing(false);
-      setIsUploading(false);
       
       toast({
         title: "Processing complete",
@@ -327,9 +331,10 @@ const Dashboard = () => {
       console.error("Processing error:", error);
       toast({
         title: "Processing failed",
-        description: error.message,
+        description: error.message || "An unexpected error occurred",
         variant: "destructive",
       });
+    } finally {
       setIsProcessing(false);
       setIsUploading(false);
     }
@@ -339,6 +344,7 @@ const Dashboard = () => {
     if (!userId || !tempFileUrl || !isVerified || !selectedFile) return;
 
     setIsSavingToDb(true);
+    
     try {
       // 1. Insert document record to database
       const { data: docData, error: docError } = await supabase
@@ -374,6 +380,7 @@ const Dashboard = () => {
 
       if (extractError) throw extractError;
 
+      // 3. Add to uploaded documents list
       const newDocument: UploadedDocument = {
         id: docData.id,
         fileName: selectedFile.name,
@@ -383,22 +390,21 @@ const Dashboard = () => {
         fileUrl: tempFileUrl,
       };
       
-      // Add to documents list
       setUploadedDocuments(prev => [newDocument, ...prev]);
       
       toast({
         title: "Success",
-        description: "Certificate data saved to database successfully",
+        description: "Certificate saved to database successfully",
       });
 
-      // Reset verification
+      // 4. Reset states for next upload
       setIsVerified(false);
       
     } catch (error: any) {
       console.error("Database save error:", error);
       toast({
         title: "Save failed",
-        description: error.message,
+        description: error.message || "Failed to save to database",
         variant: "destructive",
       });
     } finally {
