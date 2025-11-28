@@ -67,6 +67,58 @@ serve(async (req) => {
       );
     }
 
+    if (fileName === 'Example3.pdf') {
+      console.log('Returning mock data for Example3.pdf');
+      return new Response(
+        JSON.stringify({
+          success: true,
+          data: {
+            named_insured: "Jacky's Freight Service\n9623 25 Ave NW, Edmonton, AB, T6N 1H7",
+            certificate_holder: "EDM Trailer Rentals\n9623 25 Ave, Edmonton, AB",
+            additional_insured: "Edm Trailer Rentals Ltd.\n9623 25 Ave NW, Edmonton, AB",
+            cancellation_notice_period: "30",
+            form_type: "CSIO C0910ECL - CERTIFICATE OF LIABILITY INSURANCE - 2010/09",
+            coverages: [
+              {
+                type: "Commercial General Liability",
+                insurance_company: "Intact Insurance Co.",
+                policy_number: "654321",
+                coverage_limit: "2,000,000",
+                coverage_currency: "CAD",
+                deductible_limit: "0",
+                deductible_currency: "CAD",
+                effective_date: "2025-11-24",
+                expiry_date: "2026-11-24"
+              },
+              {
+                type: "Automobile Liability",
+                insurance_company: "Intact Insurance Co.",
+                policy_number: "123456",
+                coverage_limit: "2,000,000",
+                coverage_currency: "CAD",
+                deductible_limit: "0",
+                deductible_currency: "CAD",
+                effective_date: "2025-11-24",
+                expiry_date: "2026-11-24"
+              },
+              {
+                type: "Non-Owned Trailer Liability",
+                insurance_company: "Intact Insurance Co.",
+                policy_number: "123456",
+                coverage_limit: "85,000",
+                coverage_currency: "CAD",
+                deductible_limit: "5,000",
+                deductible_currency: "CAD",
+                effective_date: "2025-11-24",
+                expiry_date: "2026-11-24"
+              }
+            ]
+          }
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY is not configured');
