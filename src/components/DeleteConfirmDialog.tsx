@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { logAuditEvent } from "@/lib/auditLog";
 import { Loader2 } from "lucide-react";
 
 interface DeleteConfirmDialogProps {
@@ -72,6 +73,11 @@ export const DeleteConfirmDialog = ({
         console.error("Document deletion error:", docError);
         throw docError;
       }
+
+      // Log audit event for document deletion
+      logAuditEvent('delete', 'document', documentId, {
+        file_name: documentName,
+      });
 
       toast({
         title: "Success",

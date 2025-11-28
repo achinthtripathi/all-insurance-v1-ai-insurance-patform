@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus, Edit2, Trash2, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { logAuditEvent } from "@/lib/auditLog";
 import {
   Dialog,
   DialogContent,
@@ -99,6 +100,12 @@ const Requirements = () => {
 
       if (error) throw error;
 
+      // Log audit event for requirement set creation
+      logAuditEvent('create', 'requirement_set', data.id, {
+        name: newSetName,
+        description: newSetDescription,
+      });
+
       toast({
         title: "Success",
         description: "Requirement set created successfully",
@@ -130,6 +137,11 @@ const Requirements = () => {
       if (error) throw error;
 
       setRequirementSets((prev) => prev.filter((set) => set.id !== id));
+
+      // Log audit event for requirement set deletion
+      logAuditEvent('delete', 'requirement_set', id, {
+        name: name,
+      });
 
       toast({
         title: "Success",

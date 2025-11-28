@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { EditDocumentDialog } from "@/components/EditDocumentDialog";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
+import { logAuditEvent } from "@/lib/auditLog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -124,6 +125,13 @@ const Documents = () => {
         if (extractError) throw extractError;
       }
 
+      // Log audit event for document duplication
+      logAuditEvent('duplicate', 'document', newDoc.id, {
+        original_id: doc.id,
+        original_name: doc.file_name,
+        new_name: newDoc.file_name,
+      });
+      
       toast({
         title: "Success",
         description: "Document duplicated successfully",
@@ -146,6 +154,11 @@ const Documents = () => {
 
   const handleOpenDocument = (doc: any) => {
     if (doc.file_url) {
+      // Log audit event for document view
+      logAuditEvent('view', 'document', doc.id, {
+        file_name: doc.file_name,
+      });
+      
       window.open(doc.file_url, "_blank");
     }
   };

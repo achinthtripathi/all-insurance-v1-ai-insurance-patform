@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Edit2, Trash2, Plus, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { logAuditEvent } from "@/lib/auditLog";
 import { RequirementRuleForm } from "./RequirementRuleForm";
 import {
   CERTIFICATE_FIELDS,
@@ -106,6 +107,12 @@ export const RequirementSetEditor = ({
       );
       setIsEditing(false);
 
+      // Log audit event for requirement set update
+      logAuditEvent('update', 'requirement_set', requirementSetId, {
+        name: editedName,
+        description: editedDescription,
+      });
+
       toast({
         title: "Success",
         description: "Requirement set updated successfully",
@@ -152,6 +159,18 @@ export const RequirementSetEditor = ({
       setShowAddForm(false);
       setEditingRule(null);
 
+      // Log audit event for rule save
+      logAuditEvent(
+        rule.id ? 'update' : 'create',
+        'requirement_rule',
+        rule.id || null,
+        {
+          requirement_set_id: requirementSetId,
+          field_name: rule.field_name,
+          comparison_operator: rule.comparison_operator,
+        }
+      );
+
       toast({
         title: "Success",
         description: rule.id ? "Rule updated successfully" : "Rule added successfully",
@@ -172,6 +191,13 @@ export const RequirementSetEditor = ({
       if (error) throw error;
 
       setRules((prev) => prev.filter((r) => r.id !== ruleId));
+
+      // Log audit event for rule deletion
+      const deletedRule = rules.find(r => r.id === ruleId);
+      logAuditEvent('delete', 'requirement_rule', ruleId, {
+        requirement_set_id: requirementSetId,
+        field_name: deletedRule?.field_name,
+      });
 
       toast({
         title: "Success",
