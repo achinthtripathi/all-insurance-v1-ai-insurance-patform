@@ -33,7 +33,7 @@ serve(async (req) => {
                 policy_number: "654321",
                 coverage_limit: "2,000,000",
                 coverage_currency: "CAD",
-                deductible_limit: "0",
+                deductible_limit: "N/A",
                 deductible_currency: "CAD",
                 effective_date: "2025-11-24",
                 expiry_date: "2026-11-24"
@@ -44,7 +44,7 @@ serve(async (req) => {
                 policy_number: "123456",
                 coverage_limit: "2,000,000",
                 coverage_currency: "CAD",
-                deductible_limit: "0",
+                deductible_limit: "N/A",
                 deductible_currency: "CAD",
                 effective_date: "2025-11-24",
                 expiry_date: "2026-11-24"
@@ -85,7 +85,7 @@ serve(async (req) => {
                 policy_number: "654321",
                 coverage_limit: "2,000,000",
                 coverage_currency: "CAD",
-                deductible_limit: "0",
+                deductible_limit: "N/A",
                 deductible_currency: "CAD",
                 effective_date: "2025-11-24",
                 expiry_date: "2026-11-24"
@@ -96,7 +96,7 @@ serve(async (req) => {
                 policy_number: "123456",
                 coverage_limit: "2,000,000",
                 coverage_currency: "CAD",
-                deductible_limit: "0",
+                deductible_limit: "N/A",
                 deductible_currency: "CAD",
                 effective_date: "2025-11-24",
                 expiry_date: "2026-11-24"
@@ -137,7 +137,7 @@ serve(async (req) => {
                 policy_number: "654321",
                 coverage_limit: "2,000,000",
                 coverage_currency: "CAD",
-                deductible_limit: "0",
+                deductible_limit: "N/A",
                 deductible_currency: "CAD",
                 effective_date: "2025-11-24",
                 expiry_date: "2026-11-24"
@@ -148,7 +148,7 @@ serve(async (req) => {
                 policy_number: "654321",
                 coverage_limit: "2,000,000",
                 coverage_currency: "CAD",
-                deductible_limit: "0",
+                deductible_limit: "N/A",
                 deductible_currency: "CAD",
                 effective_date: "2025-11-24",
                 expiry_date: "2026-11-24"
@@ -189,7 +189,7 @@ serve(async (req) => {
                 policy_number: "654321",
                 coverage_limit: "2,000,000",
                 coverage_currency: "CAD",
-                deductible_limit: "0",
+                deductible_limit: "N/A",
                 deductible_currency: "CAD",
                 effective_date: "2025-11-24",
                 expiry_date: "2026-11-24"
@@ -200,7 +200,7 @@ serve(async (req) => {
                 policy_number: "654321",
                 coverage_limit: "2,000,000",
                 coverage_currency: "CAD",
-                deductible_limit: "0",
+                deductible_limit: "N/A",
                 deductible_currency: "CAD",
                 effective_date: "2025-11-24",
                 expiry_date: "2026-11-24"
@@ -297,7 +297,15 @@ Return ONLY valid JSON, no additional text.`
     // Parse the JSON response
     let extractedData;
     try {
-      extractedData = JSON.parse(extractedText);
+      // Remove markdown code block formatting if present
+      let cleanedText = extractedText.trim();
+      if (cleanedText.startsWith('```json')) {
+        cleanedText = cleanedText.replace(/^```json\s*/i, '').replace(/```\s*$/, '');
+      } else if (cleanedText.startsWith('```')) {
+        cleanedText = cleanedText.replace(/^```\s*/, '').replace(/```\s*$/, '');
+      }
+      
+      extractedData = JSON.parse(cleanedText);
       
       // Transform the data to match desired format
       // Extract just the number from cancellation_notice_period
@@ -308,16 +316,17 @@ Return ONLY valid JSON, no additional text.`
         }
       }
       
-      // Convert "0" deductibles to "N/A"
+      // Convert "0" deductibles to "N/A" in deductible_limit field
       if (extractedData.coverages && Array.isArray(extractedData.coverages)) {
         extractedData.coverages = extractedData.coverages.map((coverage: any) => ({
           ...coverage,
-          deductible: coverage.deductible === "0" ? "N/A" : coverage.deductible
+          deductible_limit: coverage.deductible_limit === "0" ? "N/A" : coverage.deductible_limit
         }));
       }
       
     } catch (e) {
       console.error('Failed to parse AI response as JSON:', e);
+      console.error('Extracted text was:', extractedText);
       throw new Error('Invalid AI response format');
     }
 
