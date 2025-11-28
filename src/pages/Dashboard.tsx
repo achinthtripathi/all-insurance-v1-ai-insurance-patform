@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import PDFViewer from "@/components/PDFViewer";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { validateExtractedData, ValidationResult } from "@/lib/requirementValidation";
 import { ValidationStatusBadge } from "@/components/ValidationStatusBadge";
@@ -60,6 +61,11 @@ const Dashboard = () => {
   const [selectedRequirementSetId, setSelectedRequirementSetId] = useState<string>("");
   const [requirementRules, setRequirementRules] = useState<any[]>([]);
   const [validationResults, setValidationResults] = useState<Map<string, ValidationResult>>(new Map());
+  const [isProcessed, setIsProcessed] = useState(false);
+  const [isVerified, setIsVerified] = useState(false);
+  const [tempFileUrl, setTempFileUrl] = useState<string | null>(null);
+  const [tempDocumentId, setTempDocumentId] = useState<string | null>(null);
+  const [isSavingToDb, setIsSavingToDb] = useState(false);
   const [extractedData, setExtractedData] = useState<ExtractedData>({
     namedInsured: "",
     certificateHolder: "",
@@ -200,10 +206,11 @@ const Dashboard = () => {
     }
   };
 
-  const handleUpload = async () => {
+  const handleProcess = async () => {
     if (!selectedFile || !userId) return;
 
     setIsUploading(true);
+    setIsProcessing(true);
     try {
       // 1. Upload file to Supabase Storage
       const fileExt = selectedFile.name.split('.').pop();
@@ -220,43 +227,10 @@ const Dashboard = () => {
         .from('documents')
         .getPublicUrl(fileName);
 
-      // 2. Insert document record to database
-      const { data: docData, error: docError } = await supabase
-        .from('documents')
-        .insert({
-          user_id: userId,
-          file_name: selectedFile.name,
-          file_type: selectedFile.type,
-          file_url: urlData.publicUrl,
-          status: 'processing',
-        })
-        .select()
-        .single();
-
-      if (docError) throw docError;
-      
-      const newDocument: UploadedDocument = {
-        id: docData.id,
-        fileName: selectedFile.name,
-        fileType: selectedFile.type,
-        uploadDate: new Date(),
-        status: "processing",
-        fileUrl: urlData.publicUrl,
-      };
-      
-      // Add to documents list
-      setUploadedDocuments(prev => [newDocument, ...prev]);
-      
-      toast({
-        title: "Success",
-        description: "Document uploaded successfully",
-      });
-
       // Store file type for preview after processing
       setProcessedFileType(selectedFile.type);
+      setTempFileUrl(urlData.publicUrl);
       
-      // Start processing
-      setIsProcessing(true);
       toast({
         title: "Processing",
         description: "Extracting certificate data...",
@@ -266,7 +240,7 @@ const Dashboard = () => {
       const { data: parseData, error: parseError } = await supabase.functions.invoke('parse-certificate', {
         body: {
           documentUrl: urlData.publicUrl,
-          documentId: docData.id,
+          documentId: null,
           fileName: selectedFile.name
         }
       });
@@ -279,6 +253,7 @@ const Dashboard = () => {
           variant: "destructive",
         });
         setIsProcessing(false);
+        setIsUploading(false);
         return;
       }
 
@@ -289,6 +264,7 @@ const Dashboard = () => {
           variant: "destructive",
         });
         setIsProcessing(false);
+        setIsUploading(false);
         return;
       }
 
@@ -338,68 +314,95 @@ const Dashboard = () => {
       };
 
       setExtractedData(extractedDataFromAI);
+      setIsProcessed(true);
+      setIsProcessing(false);
+      setIsUploading(false);
+      
+      toast({
+        title: "Processing complete",
+        description: "Certificate data extracted. Please verify and upload to database.",
+      });
+      
+    } catch (error: any) {
+      console.error("Processing error:", error);
+      toast({
+        title: "Processing failed",
+        description: error.message,
+        variant: "destructive",
+      });
+      setIsProcessing(false);
+      setIsUploading(false);
+    }
+  };
 
-      // 3. Save extracted data to database
+  const handleSaveToDb = async () => {
+    if (!userId || !tempFileUrl || !isVerified || !selectedFile) return;
+
+    setIsSavingToDb(true);
+    try {
+      // 1. Insert document record to database
+      const { data: docData, error: docError } = await supabase
+        .from('documents')
+        .insert({
+          user_id: userId,
+          file_name: selectedFile.name,
+          file_type: selectedFile.type,
+          file_url: tempFileUrl,
+          status: 'completed',
+        })
+        .select()
+        .single();
+
+      if (docError) throw docError;
+
+      // 2. Save extracted data to database
       const { error: extractError } = await supabase
         .from('extracted_data')
         .insert({
           document_id: docData.id,
-          named_insured: extractedDataFromAI.namedInsured,
-          certificate_holder: extractedDataFromAI.certificateHolder,
-          additional_insured: extractedDataFromAI.additionalInsured,
-          cancellation_notice_period: extractedDataFromAI.cancellationNotice,
-          form_type: extractedDataFromAI.formType,
+          named_insured: extractedData.namedInsured,
+          certificate_holder: extractedData.certificateHolder,
+          additional_insured: extractedData.additionalInsured,
+          cancellation_notice_period: extractedData.cancellationNotice,
+          form_type: extractedData.formType,
           coverages: {
-            generalLiability: extractedDataFromAI.coverages.generalLiability,
-            automobileLiability: extractedDataFromAI.coverages.autoLiability,
-            nonOwnedTrailer: extractedDataFromAI.coverages.trailerLiability,
+            generalLiability: extractedData.coverages.generalLiability,
+            automobileLiability: extractedData.coverages.autoLiability,
+            nonOwnedTrailer: extractedData.coverages.trailerLiability,
           } as any,
         });
 
-      if (extractError) {
-        console.error("Error saving extracted data:", extractError);
-        toast({
-          title: "Warning",
-          description: "Document uploaded but extraction data failed to save",
-          variant: "destructive",
-        });
-      }
+      if (extractError) throw extractError;
 
-      // 4. Update document status to completed
-      const { error: updateError } = await supabase
-        .from('documents')
-        .update({ status: 'completed' })
-        .eq('id', docData.id);
-
-      if (updateError) {
-        console.error("Error updating document status:", updateError);
-      }
-
-      setIsProcessing(false);
+      const newDocument: UploadedDocument = {
+        id: docData.id,
+        fileName: selectedFile.name,
+        fileType: selectedFile.type,
+        uploadDate: new Date(),
+        status: "completed",
+        fileUrl: tempFileUrl,
+      };
       
-      // Update document status to completed
-      setUploadedDocuments(prev => 
-        prev.map(doc => 
-          doc.id === newDocument.id 
-            ? { ...doc, status: "completed" }
-            : doc
-        )
-      );
+      // Add to documents list
+      setUploadedDocuments(prev => [newDocument, ...prev]);
       
       toast({
-        title: "Processing complete",
-        description: "Certificate data extracted and saved to database",
+        title: "Success",
+        description: "Certificate data saved to database successfully",
       });
+
+      // Reset verification
+      setIsVerified(false);
       
     } catch (error: any) {
-      console.error("Upload error:", error);
+      console.error("Database save error:", error);
       toast({
-        title: "Upload failed",
+        title: "Save failed",
         description: error.message,
         variant: "destructive",
       });
     } finally {
-      setIsUploading(false);
+      setIsSavingToDb(false);
     }
   };
 
@@ -408,6 +411,10 @@ const Dashboard = () => {
     setFilePreviewUrl(null);
     setProcessedFileType(null);
     setImageZoom(100);
+    setIsProcessed(false);
+    setIsVerified(false);
+    setTempFileUrl(null);
+    setTempDocumentId(null);
     // Reset extracted data to empty state
     setExtractedData({
       namedInsured: "",
@@ -548,9 +555,9 @@ const Dashboard = () => {
               </>
             )}
             
-            {uploadedDocuments.length === 0 || !processedFileType ? (
+            {!isProcessed ? (
               <Button
-                onClick={handleUpload}
+                onClick={handleProcess}
                 disabled={!selectedFile || isUploading || isProcessing}
                 className="w-full"
               >
@@ -562,7 +569,7 @@ const Dashboard = () => {
                 ) : (
                   <>
                     <FileText className="mr-2 h-4 w-4" />
-                    Upload & Process
+                    Process
                   </>
                 )}
               </Button>
@@ -1069,6 +1076,48 @@ const Dashboard = () => {
                 </div>
               </div>
             </div>
+
+            {/* Human Verification Section */}
+            {isProcessed && (
+              <>
+                <Separator />
+                <div className="space-y-4 pt-4">
+                  <h4 className="font-semibold text-sm">Human Verification</h4>
+                  <div className="flex items-start space-x-3 p-4 border rounded-lg bg-muted/30">
+                    <Checkbox
+                      id="verification"
+                      checked={isVerified}
+                      onCheckedChange={(checked) => setIsVerified(checked as boolean)}
+                    />
+                    <div className="flex-1">
+                      <Label
+                        htmlFor="verification"
+                        className="text-sm font-medium leading-none cursor-pointer"
+                      >
+                        I have reviewed and verified the extracted coverage details
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Please confirm that all extracted information is accurate before uploading to database
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={handleSaveToDb}
+                    disabled={!isVerified || isSavingToDb}
+                    className="w-full"
+                  >
+                    {isSavingToDb ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Saving to Database...
+                      </>
+                    ) : (
+                      "Upload to Database"
+                    )}
+                  </Button>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
