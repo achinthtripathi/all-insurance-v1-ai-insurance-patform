@@ -255,106 +255,141 @@ const Dashboard = () => {
       // Store file type for preview after processing
       setProcessedFileType(selectedFile.type);
       
-      // Start processing simulation
+      // Start processing
       setIsProcessing(true);
       toast({
         title: "Processing",
         description: "Extracting certificate data...",
       });
       
-      setTimeout(async () => {
-        // Simulate extracted data
-        const simulatedData: ExtractedData = {
-          namedInsured: "EDM Express Inc.\n9623 25 Ave NW, Edmonton, AB, T6N 1H7",
-          certificateHolder: "EDM Trailer Rentals,\n9623 25 Ave, Edmonton, AB",
-          additionalInsured: "EDM Trailer Rentals,\n9623 25 Ave, Edmonton, AB",
-          cancellationNotice: "30 days written notice",
-          formType: "CSIO C0910ECL - CERTIFICATE OF LIABILITY INSURANCE - 2010/09",
-          coverages: {
-            generalLiability: {
-              insuranceCompany: "Intact Insurance Co.",
-              policyNumber: "654321",
-              coverageLimit: "2,000,000",
-              currency: "CAD",
-              deductible: "0",
-              effectiveDate: "2025-11-24",
-              expiryDate: "2026-11-24",
-            },
-            autoLiability: {
-              insuranceCompany: "Intact Insurance Co.",
-              policyNumber: "123456",
-              coverageLimit: "2,000,000",
-              currency: "CAD",
-              deductible: "0",
-              effectiveDate: "2025-11-24",
-              expiryDate: "2026-11-24",
-            },
-            trailerLiability: {
-              insuranceCompany: "Intact Insurance Co.",
-              policyNumber: "123456",
-              coverageLimit: "85,000",
-              currency: "CAD",
-              deductible: "5,000",
-              effectiveDate: "2025-11-24",
-              expiryDate: "2026-11-24",
-            },
-          },
-        };
-
-        setExtractedData(simulatedData);
-
-        // 3. Save extracted data to database
-        const { error: extractError } = await supabase
-          .from('extracted_data')
-          .insert({
-            document_id: docData.id,
-            named_insured: simulatedData.namedInsured,
-            certificate_holder: simulatedData.certificateHolder,
-            additional_insured: simulatedData.additionalInsured,
-            cancellation_notice_period: simulatedData.cancellationNotice,
-            form_type: simulatedData.formType,
-            coverages: {
-              generalLiability: simulatedData.coverages.generalLiability,
-              automobileLiability: simulatedData.coverages.autoLiability,
-              nonOwnedTrailer: simulatedData.coverages.trailerLiability,
-            } as any,
-          });
-
-        if (extractError) {
-          console.error("Error saving extracted data:", extractError);
-          toast({
-            title: "Warning",
-            description: "Document uploaded but extraction data failed to save",
-            variant: "destructive",
-          });
+      // Call parse-certificate edge function
+      const { data: parseData, error: parseError } = await supabase.functions.invoke('parse-certificate', {
+        body: {
+          documentUrl: urlData.publicUrl,
+          documentId: docData.id,
+          fileName: selectedFile.name
         }
+      });
 
-        // 4. Update document status to completed
-        const { error: updateError } = await supabase
-          .from('documents')
-          .update({ status: 'completed' })
-          .eq('id', docData.id);
-
-        if (updateError) {
-          console.error("Error updating document status:", updateError);
-        }
-
-        setIsProcessing(false);
-        
-        // Update document status to completed
-        setUploadedDocuments(prev => 
-          prev.map(doc => 
-            doc.id === newDocument.id 
-              ? { ...doc, status: "completed" }
-              : doc
-          )
-        );
-        
+      if (parseError) {
+        console.error("Parse error:", parseError);
         toast({
-          title: "Processing complete",
-          description: "Certificate data extracted and saved to database",
+          title: "Parsing failed",
+          description: parseError.message,
+          variant: "destructive",
         });
-      }, 3000);
+        setIsProcessing(false);
+        return;
+      }
+
+      if (!parseData.success) {
+        toast({
+          title: "Parsing failed",
+          description: parseData.error || "Failed to extract data",
+          variant: "destructive",
+        });
+        setIsProcessing(false);
+        return;
+      }
+
+      // Transform the parsed data to match our UI structure
+      const parsedResult = parseData.data;
+      const coverages = parsedResult.coverages || [];
+      
+      const glCoverage = coverages.find((c: any) => c.type === "Commercial General Liability") || {};
+      const autoCoverage = coverages.find((c: any) => c.type === "Automobile Liability") || {};
+      const trailerCoverage = coverages.find((c: any) => c.type === "Non-Owned Trailer Liability") || {};
+
+      const extractedDataFromAI: ExtractedData = {
+        namedInsured: parsedResult.named_insured || "",
+        certificateHolder: parsedResult.certificate_holder || "",
+        additionalInsured: parsedResult.additional_insured || "",
+        cancellationNotice: parsedResult.cancellation_notice_period || "",
+        formType: parsedResult.form_type || "",
+        coverages: {
+          generalLiability: {
+            insuranceCompany: glCoverage.insurance_company || "",
+            policyNumber: glCoverage.policy_number || "",
+            coverageLimit: glCoverage.coverage_limit || "",
+            currency: glCoverage.coverage_currency || "USD",
+            deductible: glCoverage.deductible_limit || "",
+            effectiveDate: glCoverage.effective_date || "",
+            expiryDate: glCoverage.expiry_date || "",
+          },
+          autoLiability: {
+            insuranceCompany: autoCoverage.insurance_company || "",
+            policyNumber: autoCoverage.policy_number || "",
+            coverageLimit: autoCoverage.coverage_limit || "",
+            currency: autoCoverage.coverage_currency || "USD",
+            deductible: autoCoverage.deductible_limit || "",
+            effectiveDate: autoCoverage.effective_date || "",
+            expiryDate: autoCoverage.expiry_date || "",
+          },
+          trailerLiability: {
+            insuranceCompany: trailerCoverage.insurance_company || "",
+            policyNumber: trailerCoverage.policy_number || "",
+            coverageLimit: trailerCoverage.coverage_limit || "",
+            currency: trailerCoverage.coverage_currency || "USD",
+            deductible: trailerCoverage.deductible_limit || "",
+            effectiveDate: trailerCoverage.effective_date || "",
+            expiryDate: trailerCoverage.expiry_date || "",
+          },
+        },
+      };
+
+      setExtractedData(extractedDataFromAI);
+
+      // 3. Save extracted data to database
+      const { error: extractError } = await supabase
+        .from('extracted_data')
+        .insert({
+          document_id: docData.id,
+          named_insured: extractedDataFromAI.namedInsured,
+          certificate_holder: extractedDataFromAI.certificateHolder,
+          additional_insured: extractedDataFromAI.additionalInsured,
+          cancellation_notice_period: extractedDataFromAI.cancellationNotice,
+          form_type: extractedDataFromAI.formType,
+          coverages: {
+            generalLiability: extractedDataFromAI.coverages.generalLiability,
+            automobileLiability: extractedDataFromAI.coverages.autoLiability,
+            nonOwnedTrailer: extractedDataFromAI.coverages.trailerLiability,
+          } as any,
+        });
+
+      if (extractError) {
+        console.error("Error saving extracted data:", extractError);
+        toast({
+          title: "Warning",
+          description: "Document uploaded but extraction data failed to save",
+          variant: "destructive",
+        });
+      }
+
+      // 4. Update document status to completed
+      const { error: updateError } = await supabase
+        .from('documents')
+        .update({ status: 'completed' })
+        .eq('id', docData.id);
+
+      if (updateError) {
+        console.error("Error updating document status:", updateError);
+      }
+
+      setIsProcessing(false);
+      
+      // Update document status to completed
+      setUploadedDocuments(prev => 
+        prev.map(doc => 
+          doc.id === newDocument.id 
+            ? { ...doc, status: "completed" }
+            : doc
+        )
+      );
+      
+      toast({
+        title: "Processing complete",
+        description: "Certificate data extracted and saved to database",
+      });
       
     } catch (error: any) {
       console.error("Upload error:", error);
