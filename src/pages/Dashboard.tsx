@@ -13,7 +13,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { validateExtractedData, ValidationResult } from "@/lib/requirementValidation";
 import { ValidationStatusBadge } from "@/components/ValidationStatusBadge";
 import { CERTIFICATE_FIELDS } from "@/lib/certificateFields";
-import { MOCK_CERTIFICATES, MockCertificate } from "@/lib/mockCertificates";
 
 interface UploadedDocument {
   id: string;
@@ -61,7 +60,6 @@ const Dashboard = () => {
   const [selectedRequirementSetId, setSelectedRequirementSetId] = useState<string>("");
   const [requirementRules, setRequirementRules] = useState<any[]>([]);
   const [validationResults, setValidationResults] = useState<Map<string, ValidationResult>>(new Map());
-  const [selectedMockCertificate, setSelectedMockCertificate] = useState<string>("");
   const [extractedData, setExtractedData] = useState<ExtractedData>({
     namedInsured: "",
     certificateHolder: "",
@@ -199,46 +197,11 @@ const Dashboard = () => {
       const previewUrl = URL.createObjectURL(file);
       setSelectedFile(file);
       setFilePreviewUrl(previewUrl);
-      setSelectedMockCertificate(""); // Clear mock selection when real file is selected
-    }
-  };
-
-  const handleMockCertificateSelect = (mockId: string) => {
-    setSelectedMockCertificate(mockId);
-    const mockCert = MOCK_CERTIFICATES.find(m => m.id === mockId);
-    if (mockCert) {
-      // Clear real file selection
-      setSelectedFile(null);
-      // Set preview URL to mock PDF
-      setFilePreviewUrl(mockCert.pdfUrl);
-      setProcessedFileType("application/pdf");
     }
   };
 
   const handleUpload = async () => {
-    if ((!selectedFile && !selectedMockCertificate) || !userId) return;
-
-    // Handle mock certificate selection
-    if (selectedMockCertificate && !selectedFile) {
-      const mockCert = MOCK_CERTIFICATES.find(m => m.id === selectedMockCertificate);
-      if (!mockCert) return;
-
-      setIsProcessing(true);
-      toast({
-        title: "Processing",
-        description: "Loading mock certificate data...",
-      });
-
-      setTimeout(() => {
-        setExtractedData(mockCert.data);
-        setIsProcessing(false);
-        toast({
-          title: "Mock certificate loaded",
-          description: "Data loaded from mock certificate for testing",
-        });
-      }, 1500);
-      return;
-    }
+    if (!selectedFile || !userId) return;
 
     setIsUploading(true);
     try {
@@ -410,7 +373,6 @@ const Dashboard = () => {
     setFilePreviewUrl(null);
     setProcessedFileType(null);
     setImageZoom(100);
-    setSelectedMockCertificate("");
     // Reset extracted data to empty state
     setExtractedData({
       namedInsured: "",
@@ -550,43 +512,11 @@ const Dashboard = () => {
                 </div>
               </>
             )}
-
-            {/* Mock Certificate Selector */}
-            {!filePreviewUrl && (
-              <>
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <Separator />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">
-                      Or use test certificate
-                    </span>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="mockCertificate">Mock Certificate</Label>
-                  <Select value={selectedMockCertificate} onValueChange={handleMockCertificateSelect}>
-                    <SelectTrigger id="mockCertificate">
-                      <SelectValue placeholder="Select a test certificate" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {MOCK_CERTIFICATES.map((cert) => (
-                        <SelectItem key={cert.id} value={cert.id}>
-                          {cert.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </>
-            )}
             
             {uploadedDocuments.length === 0 || !processedFileType ? (
               <Button
                 onClick={handleUpload}
-                disabled={(!selectedFile && !selectedMockCertificate) || isUploading || isProcessing}
+                disabled={!selectedFile || isUploading || isProcessing}
                 className="w-full"
               >
                 {isUploading || isProcessing ? (
