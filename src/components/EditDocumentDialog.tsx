@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { logAuditEvent } from "@/lib/auditLog";
 import { Loader2 } from "lucide-react";
 
 interface Coverage {
@@ -104,6 +105,30 @@ export const EditDocumentDialog = ({ document, open, onOpenChange, onSaved }: Ed
 
         if (extractError) throw extractError;
       }
+
+      // Track changed fields for audit log
+      const changedFields: string[] = [];
+      if (formData.file_name !== document.file_name) changedFields.push('file_name');
+      if (extractedData) {
+        if (formData.named_insured !== extractedData.named_insured) changedFields.push('named_insured');
+        if (formData.certificate_holder !== extractedData.certificate_holder) changedFields.push('certificate_holder');
+        if (formData.additional_insured !== extractedData.additional_insured) changedFields.push('additional_insured');
+        if (formData.cancellation_notice_period !== extractedData.cancellation_notice_period) changedFields.push('cancellation_notice_period');
+        if (formData.form_type !== extractedData.form_type) changedFields.push('form_type');
+        // Check coverage changes
+        Object.keys(formData.coverages).forEach((coverageKey) => {
+          const key = coverageKey as keyof typeof formData.coverages;
+          if (JSON.stringify(formData.coverages[key]) !== JSON.stringify(coverages[key])) {
+            changedFields.push(`coverages.${key}`);
+          }
+        });
+      }
+
+      // Log audit event for document update
+      logAuditEvent('update', 'document', document.id, {
+        file_name: formData.file_name,
+        updated_fields: changedFields,
+      });
 
       toast({
         title: "Success",

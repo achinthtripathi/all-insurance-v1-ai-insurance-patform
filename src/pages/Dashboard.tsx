@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { validateExtractedData, ValidationResult } from "@/lib/requirementValidation";
 import { ValidationStatusBadge } from "@/components/ValidationStatusBadge";
 import { CERTIFICATE_FIELDS } from "@/lib/certificateFields";
+import { logAuditEvent } from "@/lib/auditLog";
 
 interface UploadedDocument {
   id: string;
@@ -322,6 +323,12 @@ const Dashboard = () => {
       setExtractedData(extractedDataFromAI);
       setIsProcessed(true);
       
+      // Log audit event for document processing
+      logAuditEvent('process', 'document', null, {
+        file_name: selectedFile.name,
+        file_type: selectedFile.type,
+      });
+      
       toast({
         title: "Processing complete",
         description: "Certificate data extracted. Please verify and upload to database.",
@@ -391,6 +398,13 @@ const Dashboard = () => {
       };
       
       setUploadedDocuments(prev => [newDocument, ...prev]);
+      
+      // Log audit event for document upload
+      logAuditEvent('upload', 'document', docData.id, {
+        file_name: selectedFile.name,
+        named_insured: extractedData.namedInsured,
+        certificate_holder: extractedData.certificateHolder,
+      });
       
       toast({
         title: "Success",

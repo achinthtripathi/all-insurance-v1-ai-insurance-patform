@@ -12,10 +12,33 @@ const AuditLog = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // TODO: Load audit logs when auth is enabled
-    // For now, show empty state
-    setIsLoading(false);
+    loadAuditLogs();
   }, []);
+
+  const loadAuditLogs = async () => {
+    try {
+      setIsLoading(true);
+      
+      const { data, error } = await supabase
+        .from('audit_logs')
+        .select('*')
+        .order('timestamp', { ascending: false })
+        .limit(100);
+
+      if (error) throw error;
+
+      setAuditLogs(data || []);
+    } catch (error: any) {
+      console.error('Error loading audit logs:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to load audit logs",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const exportToCSV = () => {
     const headers = ["Timestamp", "Action", "Entity Type", "Entity ID", "Details"];
