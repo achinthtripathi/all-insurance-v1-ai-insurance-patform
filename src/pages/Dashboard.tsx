@@ -42,8 +42,9 @@ interface CoverageDetail {
   insuranceCompany: string;
   policyNumber: string;
   coverageLimit: string;
-  currency: string;
+  coverageCurrency: string;
   deductible: string;
+  deductibleCurrency: string;
   effectiveDate: string;
   expiryDate: string;
 }
@@ -78,8 +79,9 @@ const Dashboard = () => {
         insuranceCompany: "",
         policyNumber: "",
         coverageLimit: "",
-        currency: "USD",
+        coverageCurrency: "CAD",
         deductible: "",
+        deductibleCurrency: "CAD",
         effectiveDate: "",
         expiryDate: "",
       },
@@ -87,8 +89,9 @@ const Dashboard = () => {
         insuranceCompany: "",
         policyNumber: "",
         coverageLimit: "",
-        currency: "USD",
+        coverageCurrency: "CAD",
         deductible: "",
+        deductibleCurrency: "CAD",
         effectiveDate: "",
         expiryDate: "",
       },
@@ -96,8 +99,9 @@ const Dashboard = () => {
         insuranceCompany: "",
         policyNumber: "",
         coverageLimit: "",
-        currency: "USD",
+        coverageCurrency: "CAD",
         deductible: "",
+        deductibleCurrency: "CAD",
         effectiveDate: "",
         expiryDate: "",
       },
@@ -294,8 +298,9 @@ const Dashboard = () => {
             insuranceCompany: glCoverage.insurance_company || "",
             policyNumber: glCoverage.policy_number || "",
             coverageLimit: glCoverage.coverage_limit || "",
-            currency: glCoverage.coverage_currency || "USD",
+            coverageCurrency: glCoverage.coverage_currency || "CAD",
             deductible: getDeductibleValue(glCoverage.deductible_limit),
+            deductibleCurrency: glCoverage.deductible_currency || "CAD",
             effectiveDate: glCoverage.effective_date || "",
             expiryDate: glCoverage.expiry_date || "",
           },
@@ -303,8 +308,9 @@ const Dashboard = () => {
             insuranceCompany: autoCoverage.insurance_company || "",
             policyNumber: autoCoverage.policy_number || "",
             coverageLimit: autoCoverage.coverage_limit || "",
-            currency: autoCoverage.coverage_currency || "USD",
+            coverageCurrency: autoCoverage.coverage_currency || "CAD",
             deductible: getDeductibleValue(autoCoverage.deductible_limit),
+            deductibleCurrency: autoCoverage.deductible_currency || "CAD",
             effectiveDate: autoCoverage.effective_date || "",
             expiryDate: autoCoverage.expiry_date || "",
           },
@@ -312,8 +318,9 @@ const Dashboard = () => {
             insuranceCompany: trailerCoverage.insurance_company || "",
             policyNumber: trailerCoverage.policy_number || "",
             coverageLimit: trailerCoverage.coverage_limit || "",
-            currency: trailerCoverage.coverage_currency || "USD",
+            coverageCurrency: trailerCoverage.coverage_currency || "CAD",
             deductible: getDeductibleValue(trailerCoverage.deductible_limit),
+            deductibleCurrency: trailerCoverage.deductible_currency || "CAD",
             effectiveDate: trailerCoverage.effective_date || "",
             expiryDate: trailerCoverage.expiry_date || "",
           },
@@ -443,33 +450,36 @@ const Dashboard = () => {
       cancellationNotice: "",
       formType: "",
       coverages: {
-        generalLiability: {
-          insuranceCompany: "",
-          policyNumber: "",
-          coverageLimit: "",
-          currency: "USD",
-          deductible: "",
-          effectiveDate: "",
-          expiryDate: "",
-        },
-        autoLiability: {
-          insuranceCompany: "",
-          policyNumber: "",
-          coverageLimit: "",
-          currency: "USD",
-          deductible: "",
-          effectiveDate: "",
-          expiryDate: "",
-        },
-        trailerLiability: {
-          insuranceCompany: "",
-          policyNumber: "",
-          coverageLimit: "",
-          currency: "USD",
-          deductible: "",
-          effectiveDate: "",
-          expiryDate: "",
-        },
+      generalLiability: {
+        insuranceCompany: "",
+        policyNumber: "",
+        coverageLimit: "",
+        coverageCurrency: "CAD",
+        deductible: "",
+        deductibleCurrency: "CAD",
+        effectiveDate: "",
+        expiryDate: "",
+      },
+      autoLiability: {
+        insuranceCompany: "",
+        policyNumber: "",
+        coverageLimit: "",
+        coverageCurrency: "CAD",
+        deductible: "",
+        deductibleCurrency: "CAD",
+        effectiveDate: "",
+        expiryDate: "",
+      },
+      trailerLiability: {
+        insuranceCompany: "",
+        policyNumber: "",
+        coverageLimit: "",
+        coverageCurrency: "CAD",
+        deductible: "",
+        deductibleCurrency: "CAD",
+        effectiveDate: "",
+        expiryDate: "",
+      },
       },
     });
   };
@@ -789,6 +799,27 @@ const Dashboard = () => {
                     />
                   </div>
                   <div className="space-y-2">
+                    <Label className="text-xs">Limit Currency</Label>
+                    <Select
+                      value={extractedData.coverages.generalLiability.coverageCurrency}
+                      onValueChange={(value) => setExtractedData({
+                        ...extractedData,
+                        coverages: {
+                          ...extractedData.coverages,
+                          generalLiability: { ...extractedData.coverages.generalLiability, coverageCurrency: value }
+                        }
+                      })}
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="CAD">CAD</SelectItem>
+                        <SelectItem value="USD">USD</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
                     <Label className="text-xs flex items-center gap-2">
                       Deductible
                       {selectedRequirementSetId && getValidationStatus("gl_deductible") && (
@@ -806,6 +837,27 @@ const Dashboard = () => {
                       })}
                       className="h-9"
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Deductible Currency</Label>
+                    <Select
+                      value={extractedData.coverages.generalLiability.deductibleCurrency}
+                      onValueChange={(value) => setExtractedData({
+                        ...extractedData,
+                        coverages: {
+                          ...extractedData.coverages,
+                          generalLiability: { ...extractedData.coverages.generalLiability, deductibleCurrency: value }
+                        }
+                      })}
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="CAD">CAD</SelectItem>
+                        <SelectItem value="USD">USD</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs flex items-center gap-2">
@@ -912,6 +964,27 @@ const Dashboard = () => {
                     />
                   </div>
                   <div className="space-y-2">
+                    <Label className="text-xs">Limit Currency</Label>
+                    <Select
+                      value={extractedData.coverages.autoLiability.coverageCurrency}
+                      onValueChange={(value) => setExtractedData({
+                        ...extractedData,
+                        coverages: {
+                          ...extractedData.coverages,
+                          autoLiability: { ...extractedData.coverages.autoLiability, coverageCurrency: value }
+                        }
+                      })}
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="CAD">CAD</SelectItem>
+                        <SelectItem value="USD">USD</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
                     <Label className="text-xs flex items-center gap-2">
                       Deductible
                       {selectedRequirementSetId && getValidationStatus("auto_deductible") && (
@@ -929,6 +1002,27 @@ const Dashboard = () => {
                       })}
                       className="h-9"
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Deductible Currency</Label>
+                    <Select
+                      value={extractedData.coverages.autoLiability.deductibleCurrency}
+                      onValueChange={(value) => setExtractedData({
+                        ...extractedData,
+                        coverages: {
+                          ...extractedData.coverages,
+                          autoLiability: { ...extractedData.coverages.autoLiability, deductibleCurrency: value }
+                        }
+                      })}
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="CAD">CAD</SelectItem>
+                        <SelectItem value="USD">USD</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs flex items-center gap-2">
@@ -1035,6 +1129,27 @@ const Dashboard = () => {
                     />
                   </div>
                   <div className="space-y-2">
+                    <Label className="text-xs">Limit Currency</Label>
+                    <Select
+                      value={extractedData.coverages.trailerLiability.coverageCurrency}
+                      onValueChange={(value) => setExtractedData({
+                        ...extractedData,
+                        coverages: {
+                          ...extractedData.coverages,
+                          trailerLiability: { ...extractedData.coverages.trailerLiability, coverageCurrency: value }
+                        }
+                      })}
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="CAD">CAD</SelectItem>
+                        <SelectItem value="USD">USD</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
                     <Label className="text-xs flex items-center gap-2">
                       Deductible
                       {selectedRequirementSetId && getValidationStatus("trailer_deductible") && (
@@ -1052,6 +1167,27 @@ const Dashboard = () => {
                       })}
                       className="h-9"
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Deductible Currency</Label>
+                    <Select
+                      value={extractedData.coverages.trailerLiability.deductibleCurrency}
+                      onValueChange={(value) => setExtractedData({
+                        ...extractedData,
+                        coverages: {
+                          ...extractedData.coverages,
+                          trailerLiability: { ...extractedData.coverages.trailerLiability, deductibleCurrency: value }
+                        }
+                      })}
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="CAD">CAD</SelectItem>
+                        <SelectItem value="USD">USD</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs flex items-center gap-2">

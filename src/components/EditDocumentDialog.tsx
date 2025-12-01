@@ -12,8 +12,9 @@ interface Coverage {
   insuranceCompany: string;
   policyNumber: string;
   coverageLimit: string;
-  currency: string;
+  coverageCurrency: string;
   deductible: string;
+  deductibleCurrency: string;
   effectiveDate: string;
   expiryDate: string;
 }
@@ -58,8 +59,9 @@ export const EditDocumentDialog = ({ document, open, onOpenChange, onSaved }: Ed
     insuranceCompany: "",
     policyNumber: "",
     coverageLimit: "",
-    currency: "CAD",
+    coverageCurrency: "CAD",
     deductible: "",
+    deductibleCurrency: "CAD",
     effectiveDate: "",
     expiryDate: "",
   };
@@ -289,9 +291,9 @@ export const EditDocumentDialog = ({ document, open, onOpenChange, onSaved }: Ed
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Currency</Label>
+                  <Label>Limit Currency</Label>
                   <Input
-                    value={formData.coverages[key].currency}
+                    value={formData.coverages[key].coverageCurrency}
                     onChange={(e) =>
                       setFormData({
                         ...formData,
@@ -299,7 +301,7 @@ export const EditDocumentDialog = ({ document, open, onOpenChange, onSaved }: Ed
                           ...formData.coverages,
                           [key]: {
                             ...formData.coverages[key],
-                            currency: e.target.value,
+                            coverageCurrency: e.target.value,
                           },
                         },
                       })
@@ -319,6 +321,25 @@ export const EditDocumentDialog = ({ document, open, onOpenChange, onSaved }: Ed
                           [key]: {
                             ...formData.coverages[key],
                             deductible: e.target.value,
+                          },
+                        },
+                      })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Deductible Currency</Label>
+                  <Input
+                    value={formData.coverages[key].deductibleCurrency}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        coverages: {
+                          ...formData.coverages,
+                          [key]: {
+                            ...formData.coverages[key],
+                            deductibleCurrency: e.target.value,
                           },
                         },
                       })

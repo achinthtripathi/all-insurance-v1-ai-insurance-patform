@@ -231,24 +231,27 @@ const Documents = () => {
                 <th className="px-3 py-2 text-left font-medium">GL Company</th>
                 <th className="px-3 py-2 text-left font-medium">GL Policy #</th>
                 <th className="px-3 py-2 text-left font-medium">GL Limit</th>
-                <th className="px-3 py-2 text-left font-medium">GL Currency</th>
+                <th className="px-3 py-2 text-left font-medium">GL Limit Currency</th>
                 <th className="px-3 py-2 text-left font-medium">GL Deductible</th>
+                <th className="px-3 py-2 text-left font-medium">GL Deductible Currency</th>
                 <th className="px-3 py-2 text-left font-medium">GL Effective</th>
                 <th className="px-3 py-2 text-left font-medium">GL Expiry</th>
                 {/* Auto Liability */}
                 <th className="px-3 py-2 text-left font-medium">Auto Company</th>
                 <th className="px-3 py-2 text-left font-medium">Auto Policy #</th>
                 <th className="px-3 py-2 text-left font-medium">Auto Limit</th>
-                <th className="px-3 py-2 text-left font-medium">Auto Currency</th>
+                <th className="px-3 py-2 text-left font-medium">Auto Limit Currency</th>
                 <th className="px-3 py-2 text-left font-medium">Auto Deductible</th>
+                <th className="px-3 py-2 text-left font-medium">Auto Deductible Currency</th>
                 <th className="px-3 py-2 text-left font-medium">Auto Effective</th>
                 <th className="px-3 py-2 text-left font-medium">Auto Expiry</th>
                 {/* Trailer Liability */}
                 <th className="px-3 py-2 text-left font-medium">Trailer Company</th>
                 <th className="px-3 py-2 text-left font-medium">Trailer Policy #</th>
                 <th className="px-3 py-2 text-left font-medium">Trailer Limit</th>
-                <th className="px-3 py-2 text-left font-medium">Trailer Currency</th>
+                <th className="px-3 py-2 text-left font-medium">Trailer Limit Currency</th>
                 <th className="px-3 py-2 text-left font-medium">Trailer Deductible</th>
+                <th className="px-3 py-2 text-left font-medium">Trailer Deductible Currency</th>
                 <th className="px-3 py-2 text-left font-medium">Trailer Effective</th>
                 <th className="px-3 py-2 text-left font-medium">Trailer Expiry</th>
                 <th className="px-3 py-2 text-left font-medium">Actions</th>
@@ -284,24 +287,27 @@ const Documents = () => {
                     <td className="px-3 py-2 max-w-xs truncate">{gl.insuranceCompany || "-"}</td>
                     <td className="px-3 py-2 max-w-xs truncate">{gl.policyNumber || "-"}</td>
                     <td className="px-3 py-2 max-w-xs truncate">{gl.coverageLimit || "-"}</td>
-                    <td className="px-3 py-2 max-w-xs truncate">{gl.currency || "-"}</td>
+                    <td className="px-3 py-2 max-w-xs truncate">{gl.coverageCurrency || "-"}</td>
                     <td className="px-3 py-2 max-w-xs truncate">{gl.deductible || "-"}</td>
+                    <td className="px-3 py-2 max-w-xs truncate">{gl.deductibleCurrency || "-"}</td>
                     <td className="px-3 py-2 max-w-xs truncate">{gl.effectiveDate || "-"}</td>
                     <td className="px-3 py-2 max-w-xs truncate">{gl.expiryDate || "-"}</td>
                     {/* Auto */}
                     <td className="px-3 py-2 max-w-xs truncate">{auto.insuranceCompany || "-"}</td>
                     <td className="px-3 py-2 max-w-xs truncate">{auto.policyNumber || "-"}</td>
                     <td className="px-3 py-2 max-w-xs truncate">{auto.coverageLimit || "-"}</td>
-                    <td className="px-3 py-2 max-w-xs truncate">{auto.currency || "-"}</td>
+                    <td className="px-3 py-2 max-w-xs truncate">{auto.coverageCurrency || "-"}</td>
                     <td className="px-3 py-2 max-w-xs truncate">{auto.deductible || "-"}</td>
+                    <td className="px-3 py-2 max-w-xs truncate">{auto.deductibleCurrency || "-"}</td>
                     <td className="px-3 py-2 max-w-xs truncate">{auto.effectiveDate || "-"}</td>
                     <td className="px-3 py-2 max-w-xs truncate">{auto.expiryDate || "-"}</td>
                     {/* Trailer */}
                     <td className="px-3 py-2 max-w-xs truncate">{trailer.insuranceCompany || "-"}</td>
                     <td className="px-3 py-2 max-w-xs truncate">{trailer.policyNumber || "-"}</td>
                     <td className="px-3 py-2 max-w-xs truncate">{trailer.coverageLimit || "-"}</td>
-                    <td className="px-3 py-2 max-w-xs truncate">{trailer.currency || "-"}</td>
+                    <td className="px-3 py-2 max-w-xs truncate">{trailer.coverageCurrency || "-"}</td>
                     <td className="px-3 py-2 max-w-xs truncate">{trailer.deductible || "-"}</td>
+                    <td className="px-3 py-2 max-w-xs truncate">{trailer.deductibleCurrency || "-"}</td>
                     <td className="px-3 py-2 max-w-xs truncate">{trailer.effectiveDate || "-"}</td>
                     <td className="px-3 py-2 max-w-xs truncate">{trailer.expiryDate || "-"}</td>
                     <td className="px-3 py-2">
